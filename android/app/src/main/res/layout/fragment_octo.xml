@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/surface">
+
+    <!-- Chat RecyclerView -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerChat"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:scrollbars="vertical" />
+
+    <!-- Quick command chips -->
+    <HorizontalScrollView
+        android:id="@+id/scrollShortcuts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="4dp"
+        android:background="@color/card_background">
+
+        <LinearLayout
+            android:id="@+id/layoutShortcuts"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
+    <!-- Status indicator -->
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="6dp"
+        android:textSize="13sp"
+        android:textColor="@color/primary"
+        android:fontFamily="monospace"
+        android:visibility="gone" />
+
+    <!-- Input bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="8dp"
+        android:gravity="center_vertical"
+        android:background="@color/card_background">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnVoice"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            app:icon="@drawable/ic_mic"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="20dp"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:contentDescription="Voice input" />
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:hint="@string/ask_octo"
+            android:textColorHint="@color/on_surface_variant"
+            android:textColor="@color/on_surface"
+            android:inputType="textMultiLine"
+            android:maxLines="4"
+            android:minHeight="40dp"
+            android:imeOptions="actionSend"
+            android:background="@drawable/bg_input_field"
+            android:textSize="14sp"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSend"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            app:icon="@drawable/ic_send"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="20dp"
+            app:cornerRadius="20dp"
+            style="@style/Widget.Material3.Button.IconButton.Filled"
+            android:contentDescription="Send" />
+    </LinearLayout>
+</LinearLayout>

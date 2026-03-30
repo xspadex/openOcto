@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+      "openocto": {
+        "command": "octo",
+        "args": ["mcp-server"]
+      }
+    }
+  }

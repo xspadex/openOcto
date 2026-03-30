@@ -1,0 +1,25 @@
+name = "openocto-relay"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Durable Object for rate limiting (requires Workers Paid plan)
+[durable_objects]
+bindings = [
+  { name = "RATE_LIMITER", class_name = "RateLimiter" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RateLimiter"]
+
+# Environment variables (set via `wrangler secret put`):
+#   UPSTASH_URL   - Upstash Redis REST URL
+#   UPSTASH_TOKEN - Upstash Redis REST token
+#   ASR_TOKEN     - SiliconFlow API key for free speech recognition
+#   ASR_URL       - (optional) ASR endpoint, default https://api.siliconflow.cn/v1
+#   DAILY_LIMIT   - (optional) Max proxy requests/day, default 4000
+
+# Uncomment to bind a custom domain:
+# routes = [
+#   { pattern = "relay.openocto.io", custom_domain = true }
+# ]

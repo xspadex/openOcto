@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#FF00E5FF</color>
+    <color name="primary_container">#FF1A2744</color>
+    <color name="on_primary">#FF0A0A1A</color>
+    <color name="on_primary_container">#FF80F0FF</color>
+    <color name="secondary">#FFDA70D6</color>
+    <color name="secondary_container">#FF2A1038</color>
+
+    <color name="surface">#FF0A0818</color>
+    <color name="surface_variant">#FF160E28</color>
+    <color name="on_surface">#FFEEEEFF</color>
+    <color name="on_surface_variant">#FFCCCCDD</color>
+    <color name="outline">#FF3A3460</color>
+
+    <color name="status_online">#FF00FF88</color>
+    <color name="status_offline">#FF808098</color>
+    <color name="status_error">#FFFF5577</color>
+
+    <color name="bubble_user">#FF00A8C0</color>
+    <color name="bubble_user_text">#FF0A0A1A</color>
+    <color name="bubble_ai">#FF1C1438</color>
+    <color name="bubble_ai_text">#FFE0E0F0</color>
+
+    <color name="card_background">#FF120E24</color>
+    <color name="input_background">#FF1E1638</color>
+
+    <color name="accent_cube">#FFDA70D6</color>
+    <color name="ic_launcher_background">#FF1F052C</color>
+    <color name="button_surface">#FF2A2250</color>
+</resources>

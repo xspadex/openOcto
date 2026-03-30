@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="2dp">
+
+    <!-- Timeline bar -->
+    <View
+        android:id="@+id/timelineBar"
+        android:layout_width="3dp"
+        android:layout_height="match_parent"
+        android:layout_marginEnd="10dp"
+        android:layout_marginVertical="2dp"
+        android:background="@color/outline" />
+
+    <!-- Card content -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:background="@drawable/bg_tool_card"
+        android:padding="10dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground">
+
+        <!-- Header: icon + tool name + target + status + duration -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvToolIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:id="@+id/tvToolName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:id="@+id/tvToolTarget"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textColor="?attr/colorPrimary"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:id="@+id/tvToolStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvToolDuration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:textSize="10sp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Args summary -->
+        <TextView
+            android:id="@+id/tvToolArgs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- Result preview (1-2 lines, always visible when done) -->
+        <TextView
+            android:id="@+id/tvResultPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:visibility="gone" />
+
+        <!-- Result (expanded, horizontal + vertical scroll) -->
+        <ScrollView
+            android:id="@+id/scrollResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="200dp"
+            android:layout_marginTop="6dp"
+            android:visibility="gone">
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="horizontal"
+                android:fillViewport="true">
+
+                <TextView
+                    android:id="@+id/tvToolResult"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_terminal_output"
+                    android:padding="8dp"
+                    android:fontFamily="monospace"
+                    android:textSize="10sp"
+                    android:textColor="#FFC9D1D9"
+                    android:textIsSelectable="true"
+                    android:breakStrategy="simple" />
+            </HorizontalScrollView>
+        </ScrollView>
+    </LinearLayout>
+</LinearLayout>

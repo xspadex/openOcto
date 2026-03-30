@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenOcto</string>
+
+    <!-- 通用 -->
+    <string name="close">关闭</string>
+    <string name="cancel">取消</string>
+    <string name="remove">移除</string>
+    <string name="save">保存</string>
+
+    <!-- 设备页 -->
+    <string name="scan_qr">扫描二维码</string>
+    <string name="terminal_name">终端名称</string>
+    <string name="tags">标签（逗号分隔）</string>
+    <string name="start_daemon">启动守护进程</string>
+    <string name="stop_daemon">停止守护进程</string>
+    <string name="status_offline">离线</string>
+    <string name="status_online">在线</string>
+    <string name="not_configured">未配置。扫描二维码加入网络。</string>
+    <string name="this_phone">本机</string>
+    <string name="online_as">已上线：%s</string>
+    <string name="not_joined">%s · 未加入</string>
+    <string name="join_network">加入网络</string>
+    <string name="leave_network">退出网络</string>
+    <string name="scan_qr_to_connect">扫码连接</string>
+    <string name="no_network">未连接网络</string>
+    <string name="no_network_hint">扫描二维码连接你的设备网络</string>
+    <string name="network_terminals">网络终端</string>
+    <string name="activity_label">动态</string>
+    <string name="remove_terminal_title">移除终端</string>
+    <string name="remove_terminal_msg">将「%s」从网络中移除？\n\n该设备之后可以重新加入。</string>
+    <string name="removed_toast">已移除「%s」</string>
+    <string name="failed_toast">失败：%s</string>
+
+    <!-- GPU 监控 -->
+    <string name="gpu_monitor">GPU 监控</string>
+    <string name="auto_refresh">自动刷新</string>
+    <string name="off">关闭</string>
+
+    <!-- Octo 对话 -->
+    <string name="ask_octo">问 Octo…</string>
+    <string name="chat_cleared">对话已清空。有什么可以帮你？</string>
+    <string name="ai_not_configured">AI 尚未配置。点击右上角齿轮图标设置。</string>
+    <string name="relay_not_connected">Relay 未连接。前往「设备」页扫码连接。</string>
+    <string name="setup_ai_hint">点击齿轮图标设置 AI 服务。</string>
+    <string name="recording">录音中… 点击麦克风停止</string>
+    <string name="transcribing">识别中…</string>
+    <string name="thinking">思考中…</string>
+    <string name="chat_history">聊天记录</string>
+    <string name="my_pets">我的宠物</string>
+    <string name="create_custom_pet">创建自定义宠物</string>
+    <string name="pet_locked">未解锁</string>
+
+    <!-- 宠物等级 -->
+    <string name="level_just_met">初次见面</string>
+    <string name="level_getting_to_know">逐渐熟悉</string>
+    <string name="level_good_friends">好朋友</string>
+    <string name="level_best_partner">最佳搭档</string>
+    <string name="level_soulmate">灵魂伴侣</string>
+
+    <!-- AI Cube -->
+    <string name="ai_cube">AI Cube</string>
+    <string name="ask_anything">随便问…</string>
+    <string name="select_agent">选择 AI 代理</string>
+    <string name="no_agents_found">没有找到代理。\n\n在电脑上启动：\n  octo agent-serve</string>
+    <string name="cube_welcome">你好！我是 AI Cube。你可以问我问题，或让我操作你的设备。</string>
+    <string name="cube_no_relay">Relay 未配置。返回扫描二维码连接。</string>
+    <string name="cube_no_agent">没有在线的 AI 代理。请运行：\n  octo agent-serve</string>
+
+    <!-- 代理设置 -->
+    <string name="api_not_configured">API 未配置。点击设置图标配置服务商和密钥。</string>
+    <string name="relay_not_configured">Relay 未配置。返回扫描二维码连接。</string>
+    <string name="provider">服务商</string>
+    <string name="api_key">API 密钥</string>
+    <string name="model_optional">模型（可选）</string>
+    <string name="base_url_optional">API 地址（可选）</string>
+    <string name="no_memories">暂无记忆。\n对话过程中会自动保存重要信息。</string>
+
+    <!-- 通知 -->
+    <string name="channel_name">OpenOcto 守护进程</string>
+    <string name="channel_description">远程终端控制后台服务</string>
+    <string name="notification_title">OpenOcto 运行中</string>
+    <string name="notification_text">终端守护进程已启动</string>
+
+    <!-- 动态 -->
+    <string name="feed_ago_seconds">%d秒前</string>
+    <string name="feed_ago_minutes">%d分钟前</string>
+    <string name="feed_terminals">%d 个终端</string>
+
+    <!-- 设置 -->
+    <string name="settings">设置</string>
+    <string name="language">语言</string>
+    <string name="lang_system">跟随系统</string>
+    <string name="lang_zh">中文</string>
+    <string name="memories">记忆</string>
+    <string name="permissions">权限</string>
+    <string name="file_access">文件访问</string>
+    <string name="clear_chat">清空对话</string>
+</resources>

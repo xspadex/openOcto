@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true"
+    android:background="@color/surface">
+
+    <!-- Toolbar -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/card_background"
+        android:elevation="0dp"
+        app:titleTextColor="?attr/colorOnSurface"
+        app:navigationIcon="?attr/homeAsUpIndicator" />
+
+    <!-- Info card -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        app:cardElevation="0dp"
+        app:cardCornerRadius="12dp"
+        app:cardBackgroundColor="@color/card_background"
+        app:strokeWidth="1dp"
+        app:strokeColor="@color/outline">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="14dp"
+            android:gravity="center_vertical">
+
+            <View
+                android:id="@+id/statusDot"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/bg_status_dot_offline" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvTaskType"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:id="@+id/tvTaskMeta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvTaskStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textAllCaps="true"
+                android:letterSpacing="0.05" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Terminal output (vertical + horizontal scroll) -->
+    <ScrollView
+        android:id="@+id/scrollOutput"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginHorizontal="8dp"
+        android:background="@drawable/bg_terminal_output"
+        android:clipToPadding="false"
+        android:isScrollContainer="true">
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="horizontal"
+            android:fillViewport="true">
+
+            <TextView
+                android:id="@+id/tvOutput"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                android:fontFamily="monospace"
+                android:textSize="10sp"
+                android:textColor="#FFC9D1D9"
+                android:textIsSelectable="true"
+                android:lineSpacingExtra="1dp"
+                android:breakStrategy="simple"
+                android:hyphenationFrequency="none" />
+        </HorizontalScrollView>
+    </ScrollView>
+
+    <!-- Command input bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="8dp"
+        android:gravity="center_vertical"
+        android:background="@color/card_background">
+
+        <!-- History up/down -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginEnd="4dp">
+
+            <TextView
+                android:id="@+id/btnHistoryUp"
+                android:layout_width="28dp"
+                android:layout_height="20dp"
+                android:text="\u25B2"
+                android:textSize="10sp"
+                android:gravity="center"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/btnHistoryDown"
+                android:layout_width="28dp"
+                android:layout_height="20dp"
+                android:text="\u25BC"
+                android:textSize="10sp"
+                android:gravity="center"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="$"
+            android:textSize="16sp"
+            android:textColor="?attr/colorPrimary"
+            android:textStyle="bold"
+            android:layout_marginEnd="4dp"
+            android:fontFamily="monospace" />
+
+        <EditText
+            android:id="@+id/etCommand"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:hint="Command..."
+            android:textSize="13sp"
+            android:fontFamily="monospace"
+            android:inputType="text"
+            android:imeOptions="actionSend"
+            android:background="@drawable/bg_input_field"
+            android:textColor="?attr/colorOnSurface"
+            android:paddingHorizontal="12dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRun"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="Run"
+            android:textSize="13sp"
+            android:layout_marginStart="8dp"
+            app:cornerRadius="8dp" />
+    </LinearLayout>
+</LinearLayout>

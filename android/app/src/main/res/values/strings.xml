@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenOcto</string>
+
+    <!-- Common -->
+    <string name="close">Close</string>
+    <string name="cancel">Cancel</string>
+    <string name="remove">Remove</string>
+    <string name="save">Save</string>
+
+    <!-- Devices tab -->
+    <string name="scan_qr">Scan QR Code</string>
+    <string name="terminal_name">Terminal Name</string>
+    <string name="tags">Tags (comma separated)</string>
+    <string name="start_daemon">Start Daemon</string>
+    <string name="stop_daemon">Stop Daemon</string>
+    <string name="status_offline">Offline</string>
+    <string name="status_online">Online</string>
+    <string name="not_configured">Not configured. Scan QR code to join.</string>
+    <string name="this_phone">This Phone</string>
+    <string name="online_as">Online as \'%s\'</string>
+    <string name="not_joined">%s · not joined</string>
+    <string name="join_network">Join Network</string>
+    <string name="leave_network">Leave Network</string>
+    <string name="scan_qr_to_connect">Scan QR to Connect</string>
+    <string name="no_network">No Network Connected</string>
+    <string name="no_network_hint">Scan a QR code to connect to\nyour device network</string>
+    <string name="network_terminals">NETWORK TERMINALS</string>
+    <string name="activity_label">ACTIVITY</string>
+    <string name="remove_terminal_title">Remove Terminal</string>
+    <string name="remove_terminal_msg">Remove \'%s\' from the network?\n\nThe device can rejoin later.</string>
+    <string name="removed_toast">\'%s\' removed</string>
+    <string name="failed_toast">Failed: %s</string>
+
+    <!-- GPU Monitor -->
+    <string name="gpu_monitor">GPU MONITOR</string>
+    <string name="auto_refresh">Auto-refresh</string>
+    <string name="off">Off</string>
+
+    <!-- Octo chat -->
+    <string name="ask_octo">Ask Octo…</string>
+    <string name="chat_cleared">Chat cleared. How can I help?</string>
+    <string name="ai_not_configured">AI not configured yet. Tap the gear icon to set up a provider.</string>
+    <string name="relay_not_connected">Relay not connected. Go to Devices tab and scan QR to connect.</string>
+    <string name="setup_ai_hint">Tap the gear icon to set up an AI provider.</string>
+    <string name="recording">Recording… tap mic to stop</string>
+    <string name="transcribing">Transcribing…</string>
+    <string name="thinking">Thinking…</string>
+    <string name="chat_history">Chat history</string>
+    <string name="my_pets">My Pets</string>
+    <string name="create_custom_pet">Create custom pet</string>
+    <string name="pet_locked">Locked</string>
+
+    <!-- Pet levels -->
+    <string name="level_just_met">Just met</string>
+    <string name="level_getting_to_know">Getting to know</string>
+    <string name="level_good_friends">Good friends</string>
+    <string name="level_best_partner">Best partner</string>
+    <string name="level_soulmate">Soulmate</string>
+
+    <!-- AI Cube -->
+    <string name="ai_cube">AI Cube</string>
+    <string name="ask_anything">Ask anything…</string>
+    <string name="select_agent">Select AI Agent</string>
+    <string name="no_agents_found">No agents found.\n\nStart one on your Mac/PC:\n  octo agent-serve</string>
+    <string name="cube_welcome">Hi! I\'m your AI Cube. Ask me anything or tell me to do something on your devices.</string>
+    <string name="cube_no_relay">Relay not configured. Go back and scan QR code first.</string>
+    <string name="cube_no_agent">No AI agent online. Start one with:\n  octo agent-serve</string>
+
+    <!-- Agent settings -->
+    <string name="api_not_configured">API not configured. Tap the settings icon to set your API provider and key.</string>
+    <string name="relay_not_configured">Relay not configured. Go back and scan QR code first.</string>
+    <string name="provider">Provider</string>
+    <string name="api_key">API Key</string>
+    <string name="model_optional">Model (optional)</string>
+    <string name="base_url_optional">Base URL (optional)</string>
+    <string name="no_memories">No memories saved yet.\nThe agent will save important info automatically during conversations.</string>
+
+    <!-- Notifications -->
+    <string name="channel_name">OpenOcto Daemon</string>
+    <string name="channel_description">Background daemon for remote terminal control</string>
+    <string name="notification_title">OpenOcto Running</string>
+    <string name="notification_text">Terminal daemon is active</string>
+
+    <!-- Feed -->
+    <string name="feed_ago_seconds">%ds ago</string>
+    <string name="feed_ago_minutes">%dm ago</string>
+    <string name="feed_terminals">%d terminals</string>
+
+    <!-- Settings -->
+    <string name="settings">Settings</string>
+    <string name="language">Language</string>
+    <string name="lang_system">Follow System</string>
+    <string name="lang_zh">Chinese</string>
+    <string name="memories">Memories</string>
+    <string name="permissions">Permissions</string>
+    <string name="file_access">File Access</string>
+    <string name="clear_chat">Clear Chat</string>
+</resources>
