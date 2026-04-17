@@ -74,6 +74,11 @@
             android:theme="@style/Theme.OpenOcto" />
 
         <activity
+            android:name=".LiveSessionActivity"
+            android:theme="@style/Theme.OpenOcto"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".CubeActivity"
             android:theme="@style/Theme.OpenOcto"
             android:windowSoftInputMode="adjustResize" />

@@ -176,6 +176,18 @@ class DaemonService : Service() {
                     }
                 }
 
+                // Check for notifications
+                try {
+                    val notifications = relay?.popNotifications(terminalName) ?: emptyList()
+                    for (n in notifications) {
+                        showTaskNotification(
+                            n.optString("title", "OpenOcto"),
+                            n.optString("body", ""),
+                            n.optString("source", "")
+                        )
+                    }
+                } catch (_: Exception) {}
+
                 // Poll for task
                 val task = relay?.pollTask(terminalName)
                 if (task != null && task.optString("status") == "PENDING") {
@@ -288,6 +300,32 @@ class DaemonService : Service() {
         nm.cancel(TRANSFER_NOTIFICATION_ID)
         transferCallback?.invoke(accepted)
         transferCallback = null
+    }
+
+    private var notificationCounter = 1000
+
+    private fun showTaskNotification(title: String, body: String, source: String) {
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this, notificationCounter, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val displayTitle = if (source.isNotEmpty()) "$title ($source)" else title
+
+        val notification = NotificationCompat.Builder(this, OctoApp.CHANNEL_ID)
+            .setContentTitle(displayTitle)
+            .setContentText(body.take(200))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        nm.notify(notificationCounter++, notification)
+        Log.i(TAG, "Notification: $displayTitle")
     }
 
     private fun buildNotification(text: String): Notification {

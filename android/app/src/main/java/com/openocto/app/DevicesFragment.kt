@@ -43,6 +43,10 @@ class DevicesFragment : Fragment() {
     private lateinit var cardFeed: View
     private lateinit var feedListContainer: LinearLayout
 
+    // Live sessions
+    private lateinit var tvSessionsHeader: TextView
+    private lateinit var sessionListContainer: LinearLayout
+
     // GPU metrics
     private lateinit var tvGpuHeader: TextView
     private lateinit var gpuCardContainer: LinearLayout
@@ -71,6 +75,8 @@ class DevicesFragment : Fragment() {
         terminalListContainer = view.findViewById(R.id.terminalListContainer)
         cardFeed = view.findViewById(R.id.cardFeed)
         feedListContainer = view.findViewById(R.id.feedListContainer)
+        tvSessionsHeader = view.findViewById(R.id.tvSessionsHeader)
+        sessionListContainer = view.findViewById(R.id.sessionListContainer)
         tvGpuHeader = view.findViewById(R.id.tvGpuHeader)
         gpuCardContainer = view.findViewById(R.id.gpuCardContainer)
         gpuControlRow = view.findViewById(R.id.gpuControlRow)
@@ -217,10 +223,16 @@ class DevicesFragment : Fragment() {
                 }.map { it.optString("name", "") }.filter { it.isNotEmpty() }
                 gpuTerminals = gpuNames
 
+                // Discover live sessions (from global hash, not per-terminal)
+                val activeSessions = try {
+                    r.getActiveSessions().map { it.first }
+                } catch (_: Exception) { emptyList() }
+
                 if (!isAdded) return@Thread
                 requireActivity().runOnUiThread {
                     swipeRefresh.isRefreshing = false
                     buildTerminalList(terminals)
+                    buildSessionList(activeSessions)
                     buildFeed(feed)
                     // Show GPU section if we have GPU terminals
                     if (gpuNames.isNotEmpty()) {
@@ -274,9 +286,39 @@ class DevicesFragment : Fragment() {
             )
             if (online) {
                 view.setOnClickListener {
-                    startActivity(Intent(requireContext(), TerminalViewActivity::class.java).apply {
-                        putExtra(TerminalViewActivity.EXTRA_TERMINAL_NAME, name)
-                    })
+                    // Check if this terminal has a live agent session
+                    Thread {
+                        val hasSession = try {
+                            val (output, meta) = relay!!.getSession(name)
+                            meta.optString("status") == "active" && output.isNotEmpty()
+                        } catch (_: Exception) { false }
+
+                        if (isAdded) requireActivity().runOnUiThread {
+                            if (hasSession) {
+                                // Show chooser: terminal view or live session
+                                android.app.AlertDialog.Builder(requireContext())
+                                    .setTitle(name)
+                                    .setItems(arrayOf(
+                                        "\uD83D\uDCBB ${getString(R.string.live_session)}",
+                                        "\uD83D\uDD27 Terminal"
+                                    )) { _, which ->
+                                        when (which) {
+                                            0 -> startActivity(Intent(requireContext(), LiveSessionActivity::class.java).apply {
+                                                putExtra(LiveSessionActivity.EXTRA_SESSION_NAME, name)
+                                            })
+                                            1 -> startActivity(Intent(requireContext(), TerminalViewActivity::class.java).apply {
+                                                putExtra(TerminalViewActivity.EXTRA_TERMINAL_NAME, name)
+                                            })
+                                        }
+                                    }
+                                    .show()
+                            } else {
+                                startActivity(Intent(requireContext(), TerminalViewActivity::class.java).apply {
+                                    putExtra(TerminalViewActivity.EXTRA_TERMINAL_NAME, name)
+                                })
+                            }
+                        }
+                    }.start()
                 }
             }
             view.setOnLongClickListener {
@@ -303,6 +345,33 @@ class DevicesFragment : Fragment() {
                 true
             }
             terminalListContainer.addView(view)
+        }
+    }
+
+    private fun buildSessionList(sessions: List<String>) {
+        sessionListContainer.removeAllViews()
+        if (sessions.isEmpty()) {
+            tvSessionsHeader.visibility = View.GONE
+            return
+        }
+
+        tvSessionsHeader.visibility = View.VISIBLE
+
+        for (name in sessions) {
+            val view = LayoutInflater.from(context)
+                .inflate(R.layout.item_terminal, sessionListContainer, false)
+            view.findViewById<TextView>(R.id.tvName).text = name
+            view.findViewById<TextView>(R.id.tvDetail).text = getString(R.string.live_session)
+            view.findViewById<View>(R.id.statusDot).setBackgroundResource(R.drawable.bg_status_dot_online)
+            view.findViewById<ImageView>(R.id.ivPlatform).setImageResource(R.drawable.ic_computer)
+
+            view.setOnClickListener {
+                startActivity(Intent(requireContext(), LiveSessionActivity::class.java).apply {
+                    putExtra(LiveSessionActivity.EXTRA_SESSION_NAME, name)
+                })
+            }
+
+            sessionListContainer.addView(view)
         }
     }
 

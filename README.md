@@ -1,14 +1,24 @@
 <p align="center">
-  <img src="assets/octo-bg.png" alt="openOcto" width="400" />
+  <img src="assets/octo-bg.png" alt="OpenOcto" width="400" />
 </p>
 
-<h1 align="center">openOcto</h1>
+<h1 align="center">OpenOcto</h1>
 
-<p align="center">Let your AI agent control any terminal, anywhere. Zero config, firewall-proof.</p>
+<p align="center">Any time, any device, anything.</p>
 
-openOcto connects AI agents (Claude Code, etc.) to remote machines — through firewalls, NATs, and restricted networks. All communication goes through a Redis relay (outbound HTTP only), so no ports need to be opened.
+> **Too many devices? Let Octo handle it.**
 
-Built for researchers who need AI to manage GPU servers they can't directly access.
+<p align="center">
+  <img src="assets/Examples_EN.png" alt="OpenOcto" width="400" />
+</p>
+
+<p align="center"><a href="README_CN.md">中文文档</a></p>
+
+- [x] Work from home, remotely control GPU servers behind firewalls.
+- [x] On the go, monitor device status and run commands from your phone.
+- [x] Multi-device collaboration and management — leave it to Octo.
+- [x] Compatible with Claude Code and MCP.
+- [x] Firewall-proof.
 
 ## How It Works
 
@@ -22,25 +32,33 @@ Built for researchers who need AI to manage GPU servers they can't directly acce
 ```
 
 - **Agent side**: sends tasks via MCP tools or CLI commands
-- **Relay**: your own Upstash Redis instance (free tier works fine)
+- **Relay**: built-in free relay (or your own Upstash Redis for full privacy)
 - **Worker side**: daemon polls for tasks, executes, streams results back
 
 Both sides only make **outbound HTTP requests**. No inbound ports, no SSH tunnels, no VPN.
 
 ## Quick Start
 
-### 1. Create a Redis relay (one-time, 30 seconds)
-
-Go to [upstash.com](https://upstash.com) → sign up (free) → create a Redis database. Copy the **REST URL** and **REST Token**.
-
-### 2. Install & configure (local machine)
+### 1. Install & configure (local machine)
 
 ```bash
 pip install openocto
-octo init              # Paste your Redis URL and Token
+octo setup             # AI-guided setup — walks you through everything interactively
 ```
 
-### 3. Start a worker (remote machine)
+Optional extras:
+
+```bash
+pip install "openocto[qr]"       # QR output for `octo token --qr`
+pip install "openocto[nearby]"   # BLE + encrypted nearby transfer
+pip install "openocto[metrics]"  # TensorBoard/tfevents parsing helpers
+```
+
+> `octo setup` uses a free LLM — no API key needed. It detects your environment, configures the relay, and optionally sets up an LLM provider, all through conversation.
+>
+> Prefer manual setup? Use `octo init` instead.
+
+### 2. Start a worker (remote machine)
 
 **Option A** — Install directly on the remote:
 
@@ -58,18 +76,19 @@ octo join --token "$(octo token)" --name gpu --tags "gpu,cuda"
 octo join --token "..." --name gpu --tags "gpu,cuda" --ssh "user@gpu-internal-ip"
 ```
 
-### 4. Use it
+### 3. Use it
 
 ```bash
 octo ls                              # See all terminals
 octo run gpu "nvidia-smi"            # Run a command
 octo run gpu "python train.py"       # Start training
+octo run gpu "python train.py" --notify phone  # Notify phone when done
 octo cat gpu /work/model.py          # Read a remote file
 octo edit gpu /work/config.py --old "lr=0.001" --new "lr=0.0005"
 octo kill gpu                        # Kill running command
 ```
 
-### 5. Connect your AI agent (optional)
+### 4. Connect your AI agent (optional)
 
 Add to `.mcp.json` in your project:
 
@@ -85,6 +104,17 @@ Add to `.mcp.json` in your project:
 ```
 
 Claude Code (or any MCP-compatible agent) can now control your remote terminals directly.
+
+## Training Notifications
+
+Get notified on your phone when a training job finishes — or fails:
+
+```bash
+octo run gpu "python train.py" --notify phone
+octo run gpu "python train.py" --notify phone --notify-message "Experiment A done"
+```
+
+Works across firewalls. The notification pops up as a system notification on your phone (lock screen visible).
 
 ## MCP Tools
 
@@ -131,13 +161,14 @@ Cloud storage setup (optional): `octo config --storage` — supports Cloudflare 
 
 ## Configuration
 
-### Redis Relay (required)
+### Relay
 
-| Config | What it is | Where to get it |
-|--------|-----------|-----------------|
-| Redis URL | Upstash REST API endpoint | [upstash.com](https://upstash.com) → your database → REST URL |
-| Redis Token | Bearer token | Upstash dashboard → REST Token |
-| Workspace | Namespace for isolation | Your choice, default `default` |
+`octo init` offers two options:
+
+| Option | Setup | Privacy |
+|--------|-------|---------|
+| **Free relay** (default) | Instant, no account needed | Isolated by random workspace ID |
+| **Own Redis** | Create free at [upstash.com](https://upstash.com) | Full privacy, your own instance |
 
 **Adding more machines** — use a join token instead of repeating `octo init`:
 
@@ -145,10 +176,6 @@ Cloud storage setup (optional): `octo config --storage` — supports Cloudflare 
 octo token                    # prints octo://eyJ...
 octo token --qr               # or show QR code (for phone)
 ```
-
-### CF Worker Proxy (optional)
-
-If you don't want to share Redis credentials directly (e.g. in a team), deploy the included Cloudflare Worker as a proxy. See [`cf-worker/`](cf-worker/).
 
 ### Cloud Storage (optional)
 
@@ -160,9 +187,13 @@ octo config --storage         # S3 endpoint, keys, bucket
 
 Works with Cloudflare R2 (free 10GB), AWS S3, MinIO, or any S3-compatible service.
 
+### CF Worker Proxy (optional)
+
+For team use with own Redis — deploy the included Cloudflare Worker so members don't need direct Redis credentials. See [`cf-worker/`](cf-worker/).
+
 ## Permissions & Security
 
-**Personal mode** (default): anyone with the Redis credentials has full access. Fine for solo use.
+**Personal mode** (default): anyone with the relay credentials has full access. Fine for solo use.
 
 **Public mode**: for shared environments (lab teams, multi-user setups):
 
@@ -178,12 +209,13 @@ Every task is signed with the sender's Ed25519 key and verified by the daemon be
 
 ## Android App
 
-The companion app turns your phone into an openOcto node:
+The companion app turns your phone into an OpenOcto node:
 
 - Scan QR code to join a network
 - Run as a background daemon
 - View GPU metrics with auto-refresh
-- Receive and execute tasks
+- Receive training notifications
+- Chinese / English language support
 
 Source: [`android/`](android/)
 
@@ -203,7 +235,7 @@ src/openocto/
 └── agent_md.py           CLAUDE.md generator
 ```
 
-- **Zero external dependencies** — Python standard library only
+- **Core install stays small** — QR, nearby transfer, and metrics parsing are available via optional extras
 - **Protocol**: JSON tasks in Redis, lifecycle `PENDING → RUNNING → DONE`
 - **Security**: Ed25519 signed tasks, role-based ACL, path validation, atomic CAS updates
 
@@ -211,7 +243,8 @@ src/openocto/
 
 ```
 Setup:
-  octo init                              Configure Redis relay
+  octo setup                             AI-guided setup wizard (recommended)
+  octo init                              Manual relay configuration
   octo token [--qr]                      Generate join token
   octo join --name NAME [options]        Start daemon
        --tags T                          Comma-separated tags
@@ -220,6 +253,8 @@ Setup:
 
 Remote Operations:
   octo run TARGET "COMMAND"              Execute command
+       --notify TERMINAL                 Notify when done
+       --notify-message MSG              Custom notification message
   octo cat TARGET /path                  Read file
   octo edit TARGET /path --old X --new Y Edit file
   octo glob TARGET "**/*.py"             Search files by pattern
@@ -250,7 +285,7 @@ Agent:
 
 | Problem | Solution |
 |---|---|
-| "openOcto not configured" | Run `octo init` |
+| "OpenOcto not configured" | Run `octo init` |
 | Terminal shows "offline" | Daemon not running, check `~/.octo/daemon.log` |
 | Command hangs | `octo kill TARGET` or Ctrl+C |
 | Slow first response | Terminal in cool mode, auto-wakes on task (up to 60s) |

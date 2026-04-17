@@ -543,3 +543,68 @@ class Relay:
         if not raw:
             return []
         return [json.loads(r) for r in raw]
+
+    # ---- Notifications ----
+
+    def push_notification(self, target: str, title: str, body: str,
+                          source: str = "", extra: dict = None) -> None:
+        """Push a notification to a target terminal (e.g. phone)."""
+        entry = {
+            "ts": int(time.time()),
+            "title": title,
+            "body": body,
+            "source": source,
+        }
+        if extra:
+            entry.update(extra)
+        key = self._key("notifications", target)
+        self._request("LPUSH", key, json.dumps(entry, separators=(",", ":")))
+        self._request("LTRIM", key, "0", "49")  # Keep last 50
+        self._request("EXPIRE", key, "86400")    # TTL 24h
+
+    # ---- Live Session ----
+
+    def get_session(self, name: str) -> dict:
+        """Get live session data (screen content + metadata)."""
+        output_key = self._key("session", name, "output")
+        meta_key = self._key("session", name, "meta")
+        output = self._request("GET", output_key) or ""
+        meta_raw = self._request("GET", meta_key) or "{}"
+        try:
+            meta = json.loads(meta_raw)
+        except (json.JSONDecodeError, TypeError):
+            meta = {}
+        return {"output": output, "meta": meta}
+
+    def list_sessions(self) -> dict:
+        """List all active sessions from the global sessions hash."""
+        raw = self._request("HGETALL", self._key("sessions"))
+        if not raw or not isinstance(raw, list):
+            return {}
+        result = {}
+        for i in range(0, len(raw) - 1, 2):
+            try:
+                result[raw[i]] = json.loads(raw[i + 1])
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return result
+
+    def send_session_input(self, name: str, text: str):
+        """Send input to a live session (from phone to PC)."""
+        input_key = self._key("session", name, "input")
+        self._request("LPUSH", input_key, text)
+        self._request("EXPIRE", input_key, "300")
+
+    def pop_notifications(self, target: str, count: int = 10) -> list:
+        """Pop pending notifications for a target. Returns and removes them."""
+        key = self._key("notifications", target)
+        results = []
+        for _ in range(count):
+            raw = self._request("RPOP", key)
+            if not raw:
+                break
+            try:
+                results.append(json.loads(raw))
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return results

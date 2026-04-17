@@ -1,253 +1,119 @@
 package com.openocto.app
 
 import android.text.SpannableStringBuilder
-import android.text.Spannable
-import android.text.style.ForegroundColorSpan
 
 /**
- * Generates colored pixel art for each pet species using unicode block characters.
- * Each species has a template with color tokens, rendered with the pet's color.
+ * Generates ASCII art for each pet species using plain text characters.
  */
 object PetPixelArt {
 
-    private const val F = '\u2588' // full block
-
-    // Color tokens in templates:
-    //   C = primary color, D = dark shade, L = light shade
-    //   W = white, B = black, P = pink, T = transparent (space)
-
-    fun build(species: Pet.Species, primaryColor: Int): SpannableStringBuilder {
-        val rows = getTemplate(species)
-        return render(rows, primaryColor)
+    fun build(species: Pet.Species, @Suppress("UNUSED_PARAMETER") primaryColor: Int): SpannableStringBuilder {
+        return SpannableStringBuilder(getTemplate(species).joinToString("\n"))
     }
 
-    fun buildSmall(species: Pet.Species, primaryColor: Int): SpannableStringBuilder {
-        val rows = getSmallTemplate(species)
-        return render(rows, primaryColor)
+    fun buildSmall(species: Pet.Species, @Suppress("UNUSED_PARAMETER") primaryColor: Int): SpannableStringBuilder {
+        return SpannableStringBuilder(getSmallTemplate(species).joinToString("\n"))
     }
 
     private fun getTemplate(species: Pet.Species): List<String> = when (species) {
         Pet.Species.OCTOPUS -> listOf(
-            "   CCCCCCCC   ",
-            "  CCCCCCCCCC  ",
-            " CCWWCCCCWWCC ",
-            " CCBWCCCCBWCC ",
-            " CLLCCPPCCLLC ",
-            "  CCCCCCCCCC  ",
-            "  DC DC DC DC ",
-            "  DC DC DC DC ",
+            "     ___       ",
+            "    /   \\      ",
+            "   | o o |     ",
+            "   |  ~  |     ",
+            "    \\___/      ",
+            "   /|||||\\     ",
+            "  / ||||| \\    ",
+            " ~  ~~ ~~  ~   ",
         )
         Pet.Species.CAT -> listOf(
-            "  DC          CD    ",
-            "  DCC        CCD    ",
-            "  DCCCCCCCCCCCC D   ",
-            "  CCCCCCCCCCCCCC    ",
-            "  CCWWBCCCCWWBCC    ",
-            "  CCWWBCCCCWWBCC    ",
-            "  CCCCCCDDCCCCCC    ",
-            "  CCCCCCCCCCCCCC    ",
-            "   CCCCCCCCCCCC     ",
-            "    CCCCCCCCCC      ",
-            "     CCCCCCCC       ",
-            "      CC  CC        ",
+            "   /\\_/\\       ",
+            "  ( o.o )      ",
+            "   > ^ <       ",
+            "  /|   |\\      ",
+            " (_|   |_)     ",
         )
         Pet.Species.RABBIT -> listOf(
-            "    CC    CC        ",
-            "   CCCC  CCCC       ",
-            "   CCCC  CCCC       ",
-            "   CCCCCCCCCC       ",
-            "  CCCCCCCCCCCC      ",
-            "  CCWWBCCWWBCC      ",
-            "  CCCCCCCCCCCC      ",
-            "  PPCCCCCCCCPP      ",
-            "  CCCCDDDDCCCC      ",
-            "   CCCCCCCCCC       ",
-            "    CCCCCCCC        ",
-            "     CC  CC         ",
+            "   (\\(\\        ",
+            "   ( -.-)      ",
+            "   o_(\")(\"')   ",
         )
         Pet.Species.FOX -> listOf(
-            "  DD          DD    ",
-            "  DCCC      CCCD    ",
-            "  DCCCCCCCCCCCC D   ",
-            "  CCCCCCCCCCCCCC    ",
-            "  CCWWBCCCCWWBCC    ",
-            "  CCWWBCCCCWWBCC    ",
-            "  LLCCCCDDCCCCLL    ",
-            "  CCCCLLLLLLCCCC    ",
-            "   CCCCCCCCCCCC     ",
-            "    CCCCCCCCCC      ",
-            "     DDCCCCDD       ",
-            "      DD  DD        ",
+            "   /\\_/\\       ",
+            "  ( ^.^ )      ",
+            "   \\ V /       ",
+            "   /   \\       ",
+            "  (_\\ /_)      ",
         )
         Pet.Species.BIRD -> listOf(
-            "       CCCC         ",
-            "     CCCCCCCC       ",
-            "    CCCCCCCCCC      ",
-            "   CCCCCCCCCCCC     ",
-            "   CCWWBCCWWBCC     ",
-            "   CCCCCCCCCCCC     ",
-            "  DDCCCCCCCCCCDD    ",
-            "   CCCCDDDDCCCC     ",
-            "    CCCCCCCCCC      ",
-            "     CCCCCCCC       ",
-            "      CC  CC        ",
-            "     CC    CC       ",
+            "    __         ",
+            "   (  )>       ",
+            "   ||          ",
+            "   ^^          ",
         )
         Pet.Species.ROBOT -> listOf(
-            "     DDDDDDDD       ",
-            "    CCCCCCCCCC      ",
-            "   CCCCCCCCCCCC     ",
-            "   CCLLBCCLLBCC     ",
-            "   CCLLBCCLLBCC     ",
-            "   CCCCCCCCCCCC     ",
-            "   CCDDDDDDDDC C   ",
-            "   CCCCCCCCCCCC     ",
-            "    CCCCCCCCCC      ",
-            "   DDCCCCCCCCDD     ",
-            "   DD CC  CC DD     ",
-            "      DD  DD        ",
+            "   [===]       ",
+            "   |o o|       ",
+            "   |___|       ",
+            "   /| |\\       ",
+            "  d|   |b      ",
         )
         Pet.Species.DRAGON -> listOf(
-            "  DCC        CCD    ",
-            "   DCCCCCCCCCCD     ",
-            "  CCCCCCCCCCCCCC    ",
-            "  CCWWBCCCCWWBCC    ",
-            "  CCCCCCCCCCCCCC    ",
-            "  CCCCDDDDDDCCCC    ",
-            "   CCCCCCCCCCCC     ",
-            " DD CCCCCCCCCC DD   ",
-            "     CCCCCCCC       ",
-            "    DDCCCCCCDD      ",
-            "      CC  CC        ",
-            "     DDD  DDD       ",
+            "   /\\_/\\       ",
+            "  ( @ @ )      ",
+            "  />-w-<\\      ",
+            " /  |=|  \\     ",
+            "~   d b   ~    ",
         )
         Pet.Species.PENGUIN -> listOf(
-            "      BBBBBB        ",
-            "    BBBBBBBBBB      ",
-            "   BBWWBBBBWWBB     ",
-            "   BBBBBBBBBBBB     ",
-            "   BBBWWBBWWBBB     ",
-            "   BBBWWBBWWBBB     ",
-            "   BBWWWWWWWWBB     ",
-            "   BBWWWDDWWWBB     ",
-            "    BBWWWWWWBB      ",
-            "     BBBBBBBB       ",
-            "      CC  CC        ",
-            "     CCC  CCC       ",
+            "    .___.      ",
+            "   / o o \\     ",
+            "  |   >   |    ",
+            "  |  \\_/  |    ",
+            "   \\_____/     ",
+            "    || ||       ",
         )
         Pet.Species.PANDA -> listOf(
-            "    CCCCCCCCCC      ",
-            "   CCCCCCCCCCCC     ",
-            "  BBCCCCCCCCCCBB    ",
-            "  BBWWBCCCCWWBBB    ",
-            "  BBWWBCCCCWWBBB    ",
-            "   CCCCCCCCCCCC     ",
-            "   CCCCBBBBCCCC     ",
-            "    CCCCCCCCCC      ",
-            "   BBCCCCCCCCBB     ",
-            "   BBCCCCCCCCBB     ",
-            "     CC    CC       ",
-            "     BB    BB       ",
+            "   .-\"\"\"-.     ",
+            "  /@ _ _ @\\    ",
+            "  |  (_)  |    ",
+            "  \\  ---  /    ",
+            "   '-...-'     ",
         )
     }
 
     private fun getSmallTemplate(species: Pet.Species): List<String> = when (species) {
         Pet.Species.OCTOPUS -> listOf(
-            "  CCCCCC  ",
-            " CCCCCCCC ",
-            " CWBCCWBC ",
-            " CCCCCCCC ",
-            "  CCCCCC  ",
-            " DC DC DC ",
+            "  ___  ",
+            " (o.o) ",
+            " /|||\\ ",
+            " ~ ~ ~ ",
         )
         Pet.Species.CAT -> listOf(
-            " DC    CD ",
-            " CCCCCCCC ",
-            " CWBCCWBC ",
-            " CCCCCCCC ",
-            "  CCCCCC  ",
-            "   CC CC  ",
+            " /\\_/\\ ",
+            "(o.o ) ",
+            " > ^ < ",
         )
         Pet.Species.RABBIT -> listOf(
-            "  CC  CC  ",
-            " CCCCCCCC ",
-            " CWBCCWBC ",
-            " CCCCCCCC ",
-            "  CCCCCC  ",
-            "   CC CC  ",
+            " (\\(\\ ",
+            " (-.-)  ",
+            " (\")(\") ",
         )
         Pet.Species.FOX -> listOf(
-            " DC    CD ",
-            " CCCCCCCC ",
-            " CWBCCWBC ",
-            " LLCCCCLL ",
-            "  CCCCCC  ",
-            "   DD DD  ",
+            " /\\_/\\ ",
+            "( ^.^ )",
+            "  \\ / ",
         )
         Pet.Species.BIRD -> listOf(
-            "   CCCC   ",
-            "  CCCCCC  ",
-            " CWBCCWBC ",
-            " DCCCCCC D",
-            "  CCCCCC  ",
-            "  CC  CC  ",
+            "  __  ",
+            " (  )>",
+            "  ^^ ",
         )
         Pet.Species.ROBOT -> listOf(
-            "  DDDDDD  ",
-            " CCCCCCCC ",
-            " CLBCCLBC ",
-            " CDDDDDC  ",
-            "  CCCCCC  ",
-            "  DD  DD  ",
+            " [==] ",
+            " |oo| ",
+            " |__| ",
         )
-        else -> getSmallTemplate(Pet.Species.OCTOPUS) // fallback
-    }
-
-    private fun render(rows: List<String>, primaryColor: Int): SpannableStringBuilder {
-        val C = primaryColor
-        val D = darken(primaryColor, 0.7f)
-        val L = lighten(primaryColor, 0.4f)
-        val W = 0xFFFFFFFF.toInt()
-        val B = 0xFF1A1A2E.toInt()
-        val P = 0xFFFF80AB.toInt()
-
-        val sb = SpannableStringBuilder()
-        for ((ri, row) in rows.withIndex()) {
-            for (ch in row) {
-                val color = when (ch) {
-                    'C' -> C; 'D' -> D; 'L' -> L
-                    'W' -> W; 'B' -> B; 'P' -> P
-                    else -> 0
-                }
-                if (color == 0) {
-                    sb.append(" ")
-                } else {
-                    val start = sb.length
-                    sb.append(F.toString())
-                    sb.setSpan(
-                        ForegroundColorSpan(color),
-                        start, sb.length,
-                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                }
-            }
-            if (ri < rows.lastIndex) sb.append("\n")
-        }
-        return sb
-    }
-
-    private fun darken(color: Int, factor: Float): Int {
-        val r = ((color shr 16) and 0xFF) * factor
-        val g = ((color shr 8) and 0xFF) * factor
-        val b = (color and 0xFF) * factor
-        return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
-    }
-
-    private fun lighten(color: Int, factor: Float): Int {
-        val r = ((color shr 16) and 0xFF) + ((255 - ((color shr 16) and 0xFF)) * factor)
-        val g = ((color shr 8) and 0xFF) + ((255 - ((color shr 8) and 0xFF)) * factor)
-        val b = (color and 0xFF) + ((255 - (color and 0xFF)) * factor)
-        return (0xFF shl 24) or (r.toInt().coerceIn(0, 255) shl 16) or
-                (g.toInt().coerceIn(0, 255) shl 8) or b.toInt().coerceIn(0, 255)
+        else -> getSmallTemplate(Pet.Species.OCTOPUS)
     }
 }

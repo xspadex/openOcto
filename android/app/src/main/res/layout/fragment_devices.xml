@@ -145,6 +145,26 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical" />
 
+            <!-- Live Sessions -->
+            <TextView
+                android:id="@+id/tvSessionsHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/live_sessions"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/on_surface_variant"
+                android:letterSpacing="0.05"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/sessionListContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
             <!-- GPU Metrics -->
             <TextView
                 android:id="@+id/tvGpuHeader"

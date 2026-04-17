@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorOnSurface">
+    <!-- Octopus head -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M12,2C8.13,2 5,5.13 5,9c0,2.38 1.19,4.47 3,5.74V16c0,0 -0.5,2 -2,3.5C5,20.6 5.5,22 7,22c1,0 1.5,-1 2,-2c0.5,1 1,2 2,2h2c1,0 1.5,-1 2,-2c0.5,1 1,2 2,2c1.5,0 2,-1.4 1,-2.5C16.5,18 16,16 16,16v-1.26c1.81,-1.27 3,-3.36 3,-5.74C19,5.13 15.87,2 12,2z"/>
+    <!-- Left eye -->
+    <path
+        android:fillColor="#1A1A2E"
+        android:pathData="M9.5,8.5m-1.2,0a1.2,1.2 0,1 1,2.4 0a1.2,1.2 0,1 1,-2.4 0"/>
+    <!-- Right eye -->
+    <path
+        android:fillColor="#1A1A2E"
+        android:pathData="M14.5,8.5m-1.2,0a1.2,1.2 0,1 1,2.4 0a1.2,1.2 0,1 1,-2.4 0"/>
+</vector>

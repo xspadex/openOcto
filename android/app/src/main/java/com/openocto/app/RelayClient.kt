@@ -219,6 +219,62 @@ class RelayClient(
         return (0 until arr.length()).map { JSONObject(arr.getString(it)) }
     }
 
+    // ---- Live Session ----
+
+    fun getSession(name: String): Pair<String, JSONObject> {
+        val output = request("GET", key("session", name, "output")) ?: ""
+        val metaRaw = request("GET", key("session", name, "meta")) ?: "{}"
+        val meta = try { JSONObject(metaRaw) } catch (_: Exception) { JSONObject() }
+        return Pair(output, meta)
+    }
+
+    fun sendSessionInput(name: String, text: String) {
+        request("LPUSH", key("session", name, "input"), text)
+        request("EXPIRE", key("session", name, "input"), "300")
+    }
+
+    /**
+     * Get all active sessions from the global sessions hash.
+     * Returns list of (name, meta) pairs.
+     */
+    fun getActiveSessions(): List<Pair<String, JSONObject>> {
+        val results = mutableListOf<Pair<String, JSONObject>>()
+        try {
+            val raw = request("HGETALL", key("sessions")) ?: return results
+            val arr = JSONArray(raw)
+            // HGETALL returns [key1, val1, key2, val2, ...]
+            var i = 0
+            while (i + 1 < arr.length()) {
+                val name = arr.getString(i)
+                val metaStr = arr.getString(i + 1)
+                try {
+                    val meta = JSONObject(metaStr)
+                    if (meta.optString("status") == "active") {
+                        results.add(Pair(name, meta))
+                    }
+                } catch (_: Exception) {}
+                i += 2
+            }
+        } catch (_: Exception) {}
+        return results
+    }
+
+    // ---- Notifications ----
+
+    fun popNotifications(target: String, count: Int = 10): List<JSONObject> {
+        val results = mutableListOf<JSONObject>()
+        val k = key("notifications", target)
+        for (i in 0 until count) {
+            val raw = request("RPOP", k) ?: break
+            try {
+                val s = if (raw.startsWith("\"")) JSONObject(org.json.JSONTokener(raw)).toString()
+                    else raw
+                if (s.trimStart().startsWith("{")) results.add(JSONObject(s))
+            } catch (_: Exception) { break }
+        }
+        return results
+    }
+
     // ---- Inbox ----
 
     fun submitInboxTask(target: String, filename: String, sender: String,

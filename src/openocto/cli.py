@@ -171,46 +171,71 @@ def _poll_streaming(relay: Relay, target: str, task_id: str = None) -> int:
 
 # ---- Commands ----
 
+FREE_RELAY_URL = "https://openocto-relay.openocto.workers.dev"
+
 def cmd_init(args):
-    print("openOcto Setup")
+    print("OpenOcto Setup")
     print("=" * 40)
-    print("\nYou need a Redis instance for relay communication.")
-    print("Create a free one at: https://upstash.com/")
-    print("(Optionally deploy cf-worker/ as a Cloudflare Worker proxy)\n")
 
     existing = load_config()
 
-    redis_url = input(
-        f"Redis URL [{existing.get('redis_url', '')}]: "
-    ).strip()
-    if not redis_url:
-        redis_url = existing.get("redis_url", "")
-    if not redis_url:
-        redis_url = input("Redis URL: ").strip()
+    print("\nRelay options:")
+    print("  1. Free relay  — Quick start, no setup needed (recommended)")
+    print("  2. Own Redis   — Full privacy, deploy your own relay")
+    choice = input("\nChoice [1/2] (default: 1): ").strip() or "1"
+
+    if choice == "1":
+        import uuid
+        proxy_url = FREE_RELAY_URL
+        redis_url = ""
+        redis_token = ""
+        # Each user gets a cryptographically random workspace ID
+        # (24 hex chars = 96 bits of entropy, brute-force infeasible)
+        default_ws = existing.get("workspace", "")
+        if not default_ws or default_ws == "default" or len(default_ws) < 10:
+            default_ws = f"ws-{uuid.uuid4().hex[:24]}"
+        workspace = default_ws
+        print(f"\n  Workspace: {workspace}")
+        print(f"  Relay:     {proxy_url}")
+        print()
+        print("  Security: each workspace is isolated by a random ID.")
+        print("  Share access via 'octo token' — don't share the workspace ID directly.")
+        print("  For full privacy, choose option 2 (own Redis).")
+    else:
+        redis_url = input(
+            f"\nRedis URL [{existing.get('redis_url', '')}]: "
+        ).strip()
         if not redis_url:
-            print("Aborted.")
-            return
+            redis_url = existing.get("redis_url", "")
+        if not redis_url:
+            print("Create one free at: https://upstash.com/")
+            redis_url = input("Redis URL: ").strip()
+            if not redis_url:
+                print("Aborted.")
+                return
 
-    redis_token = input(
-        f"Redis Token [{_mask(existing.get('redis_token', ''))}]: "
-    ).strip()
-    if not redis_token:
-        redis_token = existing.get("redis_token", "")
-    if not redis_token:
-        redis_token = input("Redis Token: ").strip()
+        redis_token = input(
+            f"Redis Token [{_mask(existing.get('redis_token', ''))}]: "
+        ).strip()
         if not redis_token:
-            print("Aborted.")
-            return
+            redis_token = existing.get("redis_token", "")
+        if not redis_token:
+            redis_token = input("Redis Token: ").strip()
+            if not redis_token:
+                print("Aborted.")
+                return
 
-    workspace = input(
-        f"Workspace [{existing.get('workspace', 'default')}]: "
-    ).strip() or existing.get("workspace", "default")
+        workspace = input(
+            f"Workspace [{existing.get('workspace', 'default')}]: "
+        ).strip() or existing.get("workspace", "default")
 
-    proxy_url = input(
-        f"Proxy URL (optional, for CF Worker) [{existing.get('proxy_url', '')}]: "
-    ).strip()
-    if not proxy_url:
-        proxy_url = existing.get("proxy_url", "")
+        print("\n  Proxy URL is optional. If you want a fallback relay,")
+        print("  deploy your own CF Worker (see cf-worker/). Do NOT use the free relay URL.")
+        proxy_url = input(
+            f"Proxy URL (optional) [{existing.get('proxy_url', '')}]: "
+        ).strip()
+        if not proxy_url:
+            proxy_url = existing.get("proxy_url", "")
 
     config = {
         "redis_url": redis_url,
@@ -355,6 +380,10 @@ def cmd_run(args):
         extra["timeout"] = args.timeout
     if args.no_log:
         extra["no_log"] = True
+    if args.notify:
+        extra["notify"] = args.notify
+        if args.notify_message:
+            extra["notify_message"] = args.notify_message
     task_id = Relay.generate_task_id(target)
     extra.update(_get_auth_kwargs(relay, task_id=task_id, task_type="shell"))
     task_id = relay.submit_task(target, task_type="shell", command=command,
@@ -993,6 +1022,18 @@ def cmd_companion(args):
     run_companion(name=args.name)
 
 
+def cmd_setup(args):
+    from .agent_builtin import run_setup_guide
+    run_setup_guide()
+
+
+def cmd_agent(args):
+    from .agent_repl import run_agent
+    extra = " ".join(args.args) if args.args else None
+    run_agent(backend=args.backend, model=args.model, name=args.name,
+              extra_args=extra)
+
+
 def cmd_agent_serve(args):
     from .agent_serve import run_agent_serve
     run_agent_serve(name=args.name, backend=args.backend, model=args.model)
@@ -1344,8 +1385,11 @@ def main():
     )
     sub = parser.add_subparsers(dest="subcmd")
 
+    # setup — LLM-guided onboarding (replaces the old init wizard)
+    sub.add_parser("setup", help="AI-guided setup wizard (recommended for new users)")
+
     # init
-    sub.add_parser("init", help="Configure relay connection")
+    sub.add_parser("init", help="Configure relay connection (manual)")
 
     # token
     p = sub.add_parser("token", help="Generate join token")
@@ -1379,6 +1423,10 @@ def main():
     p.add_argument("--nowait", action="store_true", help="Don't wait for result")
     p.add_argument("--timeout", type=int, default=None, help="Timeout in seconds (default: 3600)")
     p.add_argument("--no-log", action="store_true", help="Don't save output to log file on remote")
+    p.add_argument("--notify", metavar="TERMINAL", default=None,
+                   help="Send notification to TERMINAL when done (e.g. phone name)")
+    p.add_argument("--notify-message", metavar="MSG", default="",
+                   help="Custom notification message")
 
     # cat
     p = sub.add_parser("cat", help="Read a remote file")
@@ -1479,6 +1527,14 @@ def main():
     p.add_argument("--storage", action="store_true", help="Configure cloud storage")
     p.add_argument("--show", action="store_true", help="Show current config")
 
+    # agent (interactive)
+    p = sub.add_parser("agent", help="Start interactive AI agent with phone sync")
+    p.add_argument("--backend", "-b", default="auto",
+                   help="Backend: auto, claude, anthropic, openai, openrouter, deepseek, siliconflow, qwen, nvidia, ollama")
+    p.add_argument("--model", "-m", default=None, help="Model name override")
+    p.add_argument("--name", "-n", default=None, help="Session name for phone sync")
+    p.add_argument("args", nargs="*", default=[], help="Extra arguments passed to backend (e.g. claude flags)")
+
     # agent-serve
     p = sub.add_parser("agent-serve", help="Start AI agent daemon")
     p.add_argument("--name", "-n", default=None, help="Agent name (default: hostname_agent)")
@@ -1571,6 +1627,7 @@ def main():
         sys.exit(1)
 
     cmds = {
+        "setup": cmd_setup,
         "init": cmd_init,
         "token": cmd_token,
         "join": cmd_join,
@@ -1591,6 +1648,7 @@ def main():
         "metrics": cmd_metrics,
         "config": cmd_config,
         "agent-md": cmd_agent_md,
+        "agent": cmd_agent,
         "agent-serve": cmd_agent_serve,
         "agent-ls": cmd_agent_ls,
         "agent-prefer": cmd_agent_prefer,

@@ -17,7 +17,11 @@ new_sqlite_classes = ["RateLimiter"]
 #   UPSTASH_TOKEN - Upstash Redis REST token
 #   ASR_TOKEN     - SiliconFlow API key for free speech recognition
 #   ASR_URL       - (optional) ASR endpoint, default https://api.siliconflow.cn/v1
-#   DAILY_LIMIT   - (optional) Max proxy requests/day, default 4000
+#   ASR_DAILY_LIMIT - (optional) ASR requests/day per IP, default 500
+#   LLM_TOKEN     - NVIDIA API key for free LLM proxy
+#   LLM_URL       - (optional) LLM endpoint, default https://integrate.api.nvidia.com/v1
+#   LLM_DAILY_LIMIT - (optional) LLM requests/day per IP, default 200
+#   DAILY_LIMIT   - (optional) Max Redis proxy requests/day, default 4000
 
 # Uncomment to bind a custom domain:
 # routes = [

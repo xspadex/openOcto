@@ -26,8 +26,6 @@ import sys
 import time
 from pathlib import Path
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-
 # ── Protocol constants (must match Android NearbyTransferManager) ──
 
 SERVICE_UUID = "00000c70-0000-1000-8000-00805f9b34fb"
@@ -50,12 +48,37 @@ TCP_PORT = 9528
 BLE_SCAN_TIMEOUT = 10.0
 
 
+def _require_cryptography():
+    """Load cryptography lazily so the base package can install without it."""
+    try:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    except ImportError as exc:
+        raise SystemExit(
+            "[octo] Nearby transfer requires optional dependencies. "
+            "Install with: pip install 'openocto[nearby]'"
+        ) from exc
+    return AESGCM
+
+
+def _require_bleak():
+    """Load bleak lazily so BLE features fail with a helpful message."""
+    try:
+        from bleak import BleakClient, BleakScanner
+    except ImportError as exc:
+        raise SystemExit(
+            "[octo] Nearby BLE support requires optional dependencies. "
+            "Install with: pip install 'openocto[nearby]'"
+        ) from exc
+    return BleakClient, BleakScanner
+
+
 # ══════════════════════════════════════════════════════════════════════
 #  Wire Protocol — identical to Android side
 # ══════════════════════════════════════════════════════════════════════
 
 def write_frame(writer, frame_type: int, plaintext: bytes, key: bytes):
     """Write one OCTO encrypted frame."""
+    AESGCM = _require_cryptography()
     nonce = secrets.token_bytes(GCM_NONCE_SIZE)
     aesgcm = AESGCM(key)
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)
@@ -71,6 +94,7 @@ def write_frame(writer, frame_type: int, plaintext: bytes, key: bytes):
 async def async_write_frame(writer: asyncio.StreamWriter, frame_type: int,
                             plaintext: bytes, key: bytes):
     """Async version of write_frame."""
+    AESGCM = _require_cryptography()
     nonce = secrets.token_bytes(GCM_NONCE_SIZE)
     aesgcm = AESGCM(key)
     ciphertext = aesgcm.encrypt(nonce, plaintext, None)
@@ -86,6 +110,7 @@ async def async_write_frame(writer: asyncio.StreamWriter, frame_type: int,
 async def async_read_frame(reader: asyncio.StreamReader,
                            key: bytes) -> tuple[int, bytes]:
     """Read and decrypt one OCTO frame. Returns (type, plaintext)."""
+    AESGCM = _require_cryptography()
     header = await reader.readexactly(HEADER_SIZE)
     magic = header[:4]
     if magic != MAGIC:
@@ -112,7 +137,7 @@ async def async_read_frame(reader: asyncio.StreamReader,
 
 async def ble_scan(timeout: float = BLE_SCAN_TIMEOUT) -> list[dict]:
     """Scan for nearby Octo devices via BLE. Returns list of {name, address, rssi}."""
-    from bleak import BleakScanner
+    _, BleakScanner = _require_bleak()
 
     devices = []
     seen = set()
@@ -153,7 +178,7 @@ async def ble_scan(timeout: float = BLE_SCAN_TIMEOUT) -> list[dict]:
 
 async def ble_read_hotspot_info(address: str) -> dict | None:
     """Connect to a sender's BLE GATT and read hotspot info."""
-    from bleak import BleakClient
+    BleakClient, _ = _require_bleak()
 
     print(f"Reading hotspot info from {address}...")
     try:
@@ -193,7 +218,7 @@ async def ble_trigger_and_wait(address: str, timeout: float = 30.0) -> dict | No
     4. Read hotspot info
     5. Return hotspot info dict
     """
-    from bleak import BleakClient
+    BleakClient, _ = _require_bleak()
 
     print(f"Connecting to {address} via BLE...")
     try:

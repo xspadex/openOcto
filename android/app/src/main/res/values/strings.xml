@@ -96,4 +96,14 @@
     <string name="permissions">Permissions</string>
     <string name="file_access">File Access</string>
     <string name="clear_chat">Clear Chat</string>
+
+    <!-- Live Session -->
+    <string name="live_session">Live Session</string>
+    <string name="session_active">Active</string>
+    <string name="session_ended">Session ended</string>
+    <string name="session_connecting">Connecting…</string>
+    <string name="no_active_session">No active session</string>
+    <string name="send_to_session">Type a message…</string>
+    <string name="send">Send</string>
+    <string name="live_sessions">LIVE SESSIONS</string>
 </resources>

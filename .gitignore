@@ -39,6 +39,8 @@ cf-worker/.wrangler/
 .env.*
 *.local.properties
 .mcp.json
+.jit/
+/gpu
 
 # OS files
 .DS_Store

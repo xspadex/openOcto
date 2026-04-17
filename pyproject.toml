@@ -5,20 +5,49 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openocto"
 version = "0.1.0"
-description = "Let your AI agent control any terminal, anywhere. Zero config, firewall-proof."
+description = "Any time, any device, anything. AI agent that controls all your terminals across firewalls."
 license = "Apache-2.0"
 requires-python = ">=3.8"
-authors = [{ name = "openOcto contributors" }]
-keywords = ["agent", "remote", "terminal", "serverless", "claude"]
+readme = "README.md"
+authors = [{ name = "OpenOcto contributors" }]
+keywords = ["agent", "remote", "terminal", "gpu", "mcp", "claude", "firewall", "serverless"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Systems Administration",
 ]
+
+[project.urls]
+Homepage = "https://github.com/xspadex/openOcto"
+Repository = "https://github.com/xspadex/openOcto"
+Issues = "https://github.com/xspadex/openOcto/issues"
 
 [project.scripts]
 octo = "openocto.cli:main"
 
+[project.optional-dependencies]
+qr = [
+    "segno",
+]
+nearby = [
+    "bleak",
+    "cryptography",
+]
+metrics = [
+    "tbparse",
+    "tensorboard",
+]
+dev = [
+    "build",
+    "pytest",
+    "twine",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

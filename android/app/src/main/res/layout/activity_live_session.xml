@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true"
+    android:background="@color/surface">
+
+    <!-- Toolbar -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/card_background"
+        android:elevation="0dp"
+        app:titleTextColor="@color/on_surface"
+        app:navigationIcon="?attr/homeAsUpIndicator" />
+
+    <!-- Status bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:background="@color/card_background">
+
+        <View
+            android:id="@+id/statusDot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_status_dot_offline" />
+
+        <TextView
+            android:id="@+id/tvSessionStatus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp"
+            android:textColor="@color/on_surface_variant" />
+
+        <TextView
+            android:id="@+id/tvLatency"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:textColor="@color/on_surface_variant"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <!-- Terminal output -->
+    <ScrollView
+        android:id="@+id/scrollOutput"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#FF0D1117"
+        android:clipToPadding="false">
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fillViewport="true">
+
+            <TextView
+                android:id="@+id/tvOutput"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                android:fontFamily="monospace"
+                android:textSize="11sp"
+                android:textColor="#FFC9D1D9"
+                android:textIsSelectable="true"
+                android:lineSpacingExtra="1dp"
+                android:breakStrategy="simple" />
+        </HorizontalScrollView>
+    </ScrollView>
+
+    <!-- Input bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="8dp"
+        android:gravity="center_vertical"
+        android:background="@color/card_background">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=">"
+            android:textSize="16sp"
+            android:textColor="@color/primary"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:layout_marginEnd="6dp" />
+
+        <EditText
+            android:id="@+id/etInput"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:hint="@string/send_to_session"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:inputType="text"
+            android:imeOptions="actionSend"
+            android:background="@drawable/bg_input_field"
+            android:textColor="@color/on_surface"
+            android:paddingHorizontal="12dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSend"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="@string/send"
+            android:textSize="13sp"
+            android:layout_marginStart="8dp"
+            app:cornerRadius="8dp" />
+    </LinearLayout>
+</LinearLayout>

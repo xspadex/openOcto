@@ -31,6 +31,9 @@ SERVER_VERSION = "0.1.0"
 
 POLL_INTERVAL = 1  # seconds between polls when waiting for task result
 TASK_WAIT_TIMEOUT = 3600  # max seconds to wait for a task result
+QUICK_TASK_TIMEOUT = 60  # max seconds for simple ops (cat/glob/grep/edit/clip/inbox/metrics)
+PENDING_TIMEOUT = 200  # max seconds to wait for daemon to pick up a task (PENDING phase)
+                       # covers worst-case COOL_POLL_MAX (180s) + network margin
 
 _write_lock = threading.Lock()
 
@@ -67,6 +70,14 @@ TOOLS = [
                 "no_log": {
                     "type": "boolean",
                     "description": "Don't save output to log file on remote (default: false)",
+                },
+                "notify": {
+                    "type": "string",
+                    "description": "Terminal name to notify when command completes (e.g. phone name)",
+                },
+                "notify_message": {
+                    "type": "string",
+                    "description": "Custom notification message (default: auto-generated)",
                 },
             },
             "required": ["terminal", "command"],
@@ -328,15 +339,40 @@ def _get_relay() -> Relay:
 
 
 def _wait_for_task(relay: Relay, target: str, task_id: str = None,
-                   timeout: int = None) -> dict:
-    """Poll until task completes or timeout. Returns the final task dict."""
+                   timeout: int = None, progress_token=None) -> dict:
+    """Poll until task completes or timeout. Returns the final task dict.
+
+    Timeout only counts from when the daemon picks up the task (RUNNING),
+    not while it's waiting in the queue (PENDING).  PENDING has its own
+    separate ceiling (PENDING_TIMEOUT) so we don't wait forever if the
+    daemon is offline.
+
+    progress_token: MCP _meta.progressToken from the client request.  When
+    set, incremental stdout is forwarded as notifications/progress messages
+    so the MCP client (e.g. Claude Code) can display live output.
+    """
     _wake_daemon(relay, target)
     timeout = timeout or TASK_WAIT_TIMEOUT
-    start = time.time()
+    submit_time = time.time()
+    running_since = None  # set when status first becomes RUNNING
     missing_count = 0
+    last_output_len = 0  # bytes already sent as progress
+    progress_counter = 0  # monotonically increasing progress value
     while True:
-        if time.time() - start > timeout:
-            return {"output": f"[octo] Timed out waiting for result after {timeout}s.", "exit_code": -1}
+        now = time.time()
+
+        # Timeout logic: PENDING phase uses PENDING_TIMEOUT,
+        # RUNNING phase uses the caller-supplied timeout.
+        if running_since is not None:
+            if now - running_since > timeout:
+                return {"output": f"[octo] Timed out waiting for result after {timeout}s.", "exit_code": -1}
+        else:
+            if now - submit_time > PENDING_TIMEOUT:
+                return {
+                    "output": f"[octo] Daemon did not pick up task within {PENDING_TIMEOUT}s. "
+                              f"Is '{target}' online?",
+                    "exit_code": -1,
+                }
 
         # Always prefer per-task key (new path) over legacy single-task key.
         # The daemon writes completion to the per-task key, so that's the
@@ -350,10 +386,12 @@ def _wait_for_task(relay: Relay, target: str, task_id: str = None,
             if task and task_id and task.get("id") != task_id:
                 # Legacy key has a different task — ignore it, keep waiting
                 # for our per-task key to appear
+                _log(f"[poll] per-task=None, legacy id={task.get('id')} != {task_id}, legacy status={task.get('status')}")
                 time.sleep(POLL_INTERVAL)
                 continue
         if not task:
             missing_count += 1
+            _log(f"[poll] both keys returned None, missing_count={missing_count}")
             # Tolerate transient misses (network blip, relay restart, etc.)
             # The key was just SET by submit_task, so it should exist.
             if missing_count >= 5:
@@ -361,8 +399,43 @@ def _wait_for_task(relay: Relay, target: str, task_id: str = None,
             time.sleep(POLL_INTERVAL)
             continue
         missing_count = 0
+        _log(f"[poll] task status={task.get('status')}, id={task.get('id')}, from={'per-task' if task_id and task.get('id') == task_id else 'legacy'}")
+
+        # Stream incremental output via MCP notifications/progress
+        if progress_token is not None and task.get("status") == "RUNNING":
+            current_output = task.get("output", "") or ""
+            if len(current_output) > last_output_len:
+                new_text = current_output[last_output_len:]
+                last_output_len = len(current_output)
+                progress_counter += 1
+                _send({
+                    "jsonrpc": "2.0",
+                    "method": "notifications/progress",
+                    "params": {
+                        "progressToken": progress_token,
+                        "progress": progress_counter,
+                        "message": new_text,
+                    },
+                })
+
         if task["status"] in ("DONE", "FAILED"):
+            # Flush any remaining output not yet sent
+            if progress_token is not None:
+                final_output = task.get("output", "") or ""
+                if len(final_output) > last_output_len:
+                    progress_counter += 1
+                    _send({
+                        "jsonrpc": "2.0",
+                        "method": "notifications/progress",
+                        "params": {
+                            "progressToken": progress_token,
+                            "progress": progress_counter,
+                            "message": final_output[last_output_len:],
+                        },
+                    })
             return task
+        if task["status"] == "RUNNING" and running_since is None:
+            running_since = now
         time.sleep(POLL_INTERVAL)
 
 
@@ -410,7 +483,7 @@ def handle_remote_ls(args: dict) -> str:
     return "\n".join(lines)
 
 
-def handle_remote_run(args: dict) -> tuple:
+def handle_remote_run(args: dict, progress_token=None) -> tuple:
     relay = _get_relay()
     terminal = args["terminal"]
     command = args["command"]
@@ -419,13 +492,18 @@ def handle_remote_run(args: dict) -> tuple:
         extra["timeout"] = args["timeout"]
     if args.get("no_log"):
         extra["no_log"] = True
+    if args.get("notify"):
+        extra["notify"] = args["notify"]
+    if args.get("notify_message"):
+        extra["notify_message"] = args["notify_message"]
     task_id = relay.submit_task(terminal, task_type="shell", command=command, **extra)
     # Wait timeout = command timeout + buffer for daemon pickup & network latency.
     # Without this, short command timeouts (e.g. 10s) expire before the daemon
     # even picks up the task from the queue.
     cmd_timeout = args.get("timeout", TASK_WAIT_TIMEOUT)
     wait_timeout = cmd_timeout + 30
-    task = _wait_for_task(relay, terminal, task_id=task_id, timeout=wait_timeout)
+    task = _wait_for_task(relay, terminal, task_id=task_id, timeout=wait_timeout,
+                          progress_token=progress_token)
     output = task.get("output", "")
     exit_code = task.get("exit_code", 0) or 0
     timed_out = exit_code == -1 and "[octo] Timed out waiting" in output
@@ -455,7 +533,7 @@ def handle_remote_read(args: dict) -> tuple:
     if "limit" in args:
         kwargs["limit"] = args["limit"]
     task_id = relay.submit_task(terminal, task_type="cat", **kwargs)
-    task = _wait_for_task(relay, terminal, task_id=task_id)
+    task = _wait_for_task(relay, terminal, task_id=task_id, timeout=QUICK_TASK_TIMEOUT)
     _clear_task(relay, terminal, task_id)
     output = task.get("output", "")
     is_error = (task.get("exit_code", 0) or 0) != 0
@@ -475,7 +553,7 @@ def handle_remote_edit(args: dict) -> tuple:
         new=new_str,
         replace_all=args.get("replace_all", False),
     )
-    task = _wait_for_task(relay, terminal, task_id=task_id)
+    task = _wait_for_task(relay, terminal, task_id=task_id, timeout=QUICK_TASK_TIMEOUT)
     _clear_task(relay, terminal, task_id)
     output = task.get("output", "")
     is_error = (task.get("exit_code", 0) or 0) != 0
@@ -503,7 +581,7 @@ def handle_remote_glob(args: dict) -> tuple:
     if "path" in args:
         kwargs["path"] = args["path"]
     task_id = relay.submit_task(terminal, task_type="glob", **kwargs)
-    task = _wait_for_task(relay, terminal, task_id=task_id)
+    task = _wait_for_task(relay, terminal, task_id=task_id, timeout=QUICK_TASK_TIMEOUT)
     _clear_task(relay, terminal, task_id)
     output = task.get("output", "")
     is_error = (task.get("exit_code", 0) or 0) != 0
@@ -519,7 +597,7 @@ def handle_remote_grep(args: dict) -> tuple:
     if "glob" in args:
         kwargs["glob"] = args["glob"]
     task_id = relay.submit_task(terminal, task_type="grep", **kwargs)
-    task = _wait_for_task(relay, terminal, task_id=task_id)
+    task = _wait_for_task(relay, terminal, task_id=task_id, timeout=QUICK_TASK_TIMEOUT)
     _clear_task(relay, terminal, task_id)
     output = task.get("output", "")
     is_error = (task.get("exit_code", 0) or 0) != 0
@@ -659,19 +737,27 @@ def handle_remote_send(args: dict) -> tuple:
             except Exception:
                 pass  # Fall through to other routes
         else:
+            # Remote-to-remote LAN: only attempt if source and target
+            # are on the same subnet (MCP can reach source, but that
+            # doesn't mean target can).
             source_meta = _get_terminal_meta(relay, source)
             source_lan_ip = source_meta.get("lan_ip", "")
             source_lan_port = source_meta.get("lan_port", LAN_PORT)
-            if source_lan_ip and _lan_reachable(source_lan_ip, source_lan_port):
+            target_subnet = ".".join(target_lan_ip.split(".")[:3]) if target_lan_ip else ""
+            source_subnet = ".".join(source_lan_ip.split(".")[:3]) if source_lan_ip else ""
+            if (source_lan_ip and source_subnet == target_subnet
+                    and _lan_reachable(source_lan_ip, source_lan_port)):
                 path_encoded = urllib.parse.quote(file_path, safe="")
                 lan_url = f"http://{source_lan_ip}:{source_lan_port}/file?path={path_encoded}"
                 tid = relay.submit_task(target, task_type="transfer_download",
-                                  url=lan_url, dest=dest)
-                task = _wait_for_task(relay, target, task_id=tid)
+                                  url=lan_url, dest=dest, timeout=15)
+                task = _wait_for_task(relay, target, task_id=tid, timeout=30)
                 _clear_task(relay, target, tid)
                 output = task.get("output", "")
                 is_error = (task.get("exit_code", 0) or 0) != 0
-                return f"{output} (LAN direct)", is_error
+                if not is_error:
+                    return f"{output} (LAN direct)", False
+                # LAN failed, fall through to Redis relay or cloud storage
 
     # Route 2: Redis relay (small files)
     if file_size <= REDIS_TRANSFER_MAX:
@@ -791,7 +877,7 @@ def handle_remote_clip(args: dict) -> tuple:
     else:
         task_id = relay.submit_task(terminal, task_type="clipboard_read")
 
-    task = _wait_for_task(relay, terminal, task_id=task_id)
+    task = _wait_for_task(relay, terminal, task_id=task_id, timeout=QUICK_TASK_TIMEOUT)
     _clear_task(relay, terminal, task_id)
     output = task.get("output", "")
     is_error = (task.get("exit_code", 0) or 0) != 0
@@ -802,7 +888,7 @@ def handle_remote_inbox(args: dict) -> tuple:
     relay = _get_relay()
     terminal = args["terminal"]
     task_id = relay.submit_task(terminal, task_type="inbox_list")
-    task = _wait_for_task(relay, terminal, task_id=task_id)
+    task = _wait_for_task(relay, terminal, task_id=task_id, timeout=QUICK_TASK_TIMEOUT)
     _clear_task(relay, terminal, task_id)
     output = task.get("output", "")
     is_error = (task.get("exit_code", 0) or 0) != 0
@@ -818,7 +904,7 @@ def handle_remote_metrics(args: dict) -> tuple:
     if "tail" in args:
         extra["tail"] = args["tail"]
     task_id = relay.submit_task(terminal, task_type="metrics", **extra)
-    task = _wait_for_task(relay, terminal, task_id=task_id, timeout=60)
+    task = _wait_for_task(relay, terminal, task_id=task_id, timeout=QUICK_TASK_TIMEOUT)
     _clear_task(relay, terminal, task_id)
     output = task.get("output", "")
     is_error = (task.get("exit_code", 0) or 0) != 0
@@ -845,9 +931,17 @@ HANDLERS = {
 
 # ---- JSON-RPC / MCP Protocol ----
 
+_LOG_FILE = os.path.expanduser("~/.octo/mcp_debug.log")  # TODO: gate with OCTO_MCP_DEBUG after bug fix
+
 def _log(msg: str):
     """Log to stderr (stdout is reserved for MCP protocol)."""
     print(f"[octo-mcp] {msg}", file=sys.stderr, flush=True)
+    if _LOG_FILE:
+        try:
+            with open(_LOG_FILE, "a") as f:
+                f.write(f"{msg}\n")
+        except OSError:
+            pass
 
 
 def _send(msg: dict):
@@ -898,11 +992,15 @@ def _feed_summary(tool_name, arguments, text, is_error, duration):
     return s
 
 
-def _handle_tool_call(req_id, handler, arguments, tool_name=""):
+def _handle_tool_call(req_id, handler, arguments, tool_name="", progress_token=None):
     """Execute a tool handler and send the response (runs in a thread)."""
     start = time.time()
     try:
-        result = handler(arguments)
+        # Pass progress_token to handlers that accept it (remote_run)
+        if progress_token is not None and tool_name == "remote_run":
+            result = handler(arguments, progress_token=progress_token)
+        else:
+            result = handler(arguments)
         if isinstance(result, tuple):
             text, is_error = result
         else:
@@ -950,6 +1048,7 @@ def handle_message(msg: dict):
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {
                 "tools": {"listChanged": False},
+                "notifications": {"progress": True},
             },
             "serverInfo": {
                 "name": SERVER_NAME,
@@ -964,6 +1063,7 @@ def handle_message(msg: dict):
     elif method == "tools/call":
         tool_name = params.get("name", "")
         arguments = params.get("arguments", {})
+        progress_token = params.get("_meta", {}).get("progressToken")
 
         handler = HANDLERS.get(tool_name)
         if not handler:
@@ -976,7 +1076,7 @@ def handle_message(msg: dict):
         # Run tool call in a thread so blocking handlers don't block others
         thread = threading.Thread(
             target=_handle_tool_call,
-            args=(req_id, handler, arguments, tool_name),
+            args=(req_id, handler, arguments, tool_name, progress_token),
             daemon=True,
         )
         thread.start()

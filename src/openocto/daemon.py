@@ -457,9 +457,23 @@ class Daemon:
     def _ssh_base(self) -> list:
         """Base SSH command with ControlPath if supported."""
         alive = ["-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=6"]
+        connect = ["-o", "ConnectTimeout=10"]
         if self._use_control_master:
-            return ["ssh", "-o", f"ControlPath={self._ssh_control}", *alive]
-        return ["ssh", *alive]
+            return ["ssh", "-o", f"ControlPath={self._ssh_control}", *connect, *alive]
+        return ["ssh", *connect, *alive]
+
+    def _is_control_master_alive(self) -> bool:
+        """Check if the SSH ControlMaster process is still running."""
+        if not self._use_control_master:
+            return True
+        try:
+            r = subprocess.run(
+                ["ssh", "-O", "check", "-o", f"ControlPath={self._ssh_control}", self.ssh],
+                capture_output=True, timeout=5,
+            )
+            return r.returncode == 0
+        except Exception:
+            return False
 
     def _ssh_connect(self):
         """Establish SSH connection. Uses ControlMaster on Unix."""
@@ -581,6 +595,11 @@ class Daemon:
                 if task_id:
                     task = self.relay.poll_task(self.name, task_id)
                     if task and task.get("status") == "PENDING":
+                        # Mark legacy key as RUNNING immediately so the legacy
+                        # check below never sees PENDING for this task, even
+                        # after the per-task key is deleted by the MCP caller.
+                        self.relay.update_task(self.name, {"status": "RUNNING"},
+                                               expected_id=task_id)
                         # Dispatch in a new thread
                         cwd_snapshot = self.cwd
                         t = threading.Thread(
@@ -594,12 +613,20 @@ class Daemon:
                         running = self._running_count
                         print(f"[octo] Task {task_id} started ({running}/{self._max_concurrent} slots)")
 
-                # Also check legacy single-task key for old clients
+                # Also check legacy single-task key for old clients.
+                # Only dispatch if the task doesn't have a per-task key
+                # (i.e. it was submitted by an old client that only writes
+                # the legacy key). New clients write both, so the per-task
+                # key existing means the queue path already handled it.
                 if not got_work:
                     legacy = self.relay.poll_task(self.name)
                     if legacy and legacy.get("status") == "PENDING":
                         legacy_id = legacy.get("id", "legacy")
-                        if legacy_id not in self._running_tasks:
+                        # Skip if per-task key exists (new client — handled via queue)
+                        per_task = self.relay.poll_task(self.name, task_id=legacy_id)
+                        if per_task is not None:
+                            pass  # new client task, queue path handles it
+                        elif legacy_id not in self._running_tasks:
                             cwd_snapshot = self.cwd
                             t = threading.Thread(
                                 target=self._dispatch_legacy,
@@ -787,6 +814,7 @@ class Daemon:
                     self.relay._direct_fails = 0
                 written = self.relay.complete_task(
                     self.name, output, exit_code, expected_id=tid, task_id=task_id)
+                print(f"[octo] Task {tid}: complete_task written={written}, task_id={task_id}, output_len={len(output)}")
                 if not written:
                     print(f"[octo] Task {tid}: result not delivered (key gone).")
                 break
@@ -796,9 +824,45 @@ class Daemon:
                     time.sleep(2 ** attempt)  # 1, 2, 4, 8s
         else:
             print(f"[octo] CRITICAL: Could not deliver task result after 5 attempts.")
+            # Fallback: try marking FAILED with minimal payload so MCP side
+            # doesn't wait forever.  The small body has a higher chance of
+            # getting through than the original (possibly large) output.
+            try:
+                self.relay.complete_task(
+                    self.name,
+                    "[octo] Result delivery failed. Task completed but output lost.",
+                    1,
+                    expected_id=tid,
+                    task_id=task_id,
+                )
+                print(f"[octo] Task {tid}: fallback FAILED marker delivered.")
+            except Exception:
+                pass  # truly unreachable — MCP side will hit its timeout
 
         status = "OK" if exit_code == 0 else f"FAILED (exit {exit_code})"
         print(f"[octo] Task {tid}: {status}")
+
+        # Send notification if requested
+        notify_target = task.get("notify")
+        if notify_target:
+            try:
+                notify_msg = task.get("notify_message", "")
+                elapsed = int(time.time() - task.get("created_at", time.time()))
+                elapsed_str = f"{elapsed // 3600}h{(elapsed % 3600) // 60}m" if elapsed >= 3600 else f"{elapsed // 60}m{elapsed % 60}s"
+                title = notify_msg if notify_msg else (
+                    f"Task {'completed' if exit_code == 0 else 'failed'} on {self.name}"
+                )
+                # Include last few lines of output
+                output_tail = output.strip().split("\n")[-3:]
+                body = f"[{elapsed_str}] exit {exit_code}\n" + "\n".join(output_tail)
+                self.relay.push_notification(
+                    notify_target, title, body[:500],
+                    source=self.name,
+                    extra={"task_id": tid, "exit_code": exit_code},
+                )
+                print(f"[octo] Notification sent to '{notify_target}'")
+            except Exception as e:
+                print(f"[octo] Notification failed: {e}")
 
     # ---- Shell Execution (streaming + persistent cwd) ----
 
@@ -1058,8 +1122,12 @@ class Daemon:
                     except ValueError:
                         exit_code = 0
 
-                    # Read full output (with truncation for huge files)
-                    if out_size <= MAX_OUTPUT:
+                    # Read full output.  If tail already captured everything
+                    # (output <= STREAM_TAIL_BYTES), skip the extra SSH call.
+                    if out_size <= STREAM_TAIL_BYTES:
+                        # tail_text IS the full output — no need for `cat`
+                        last_output = tail_text
+                    elif out_size <= MAX_OUTPUT:
                         r2 = self._ssh_exec(f'cat {out_file} 2>/dev/null', timeout=30)
                         last_output = r2.stdout or ""
                     else:
@@ -1076,30 +1144,40 @@ class Daemon:
                     if len(last_output) > MAX_OUTPUT:
                         last_output = "[truncated]...\n" + last_output[-MAX_OUTPUT:]
 
-                    # Cleanup remote temp files
-                    try:
-                        self._ssh_exec(
-                            f'rm -f {out_file} {pid_file} {ec_file} {cmd_file}',
-                            timeout=10,
-                        )
-                    except Exception:
-                        pass
-                    # Update cwd
-                    try:
-                        r2 = self._ssh_exec(
-                            f'cat {shlex.quote(cwd_file)} 2>/dev/null && rm -f {shlex.quote(cwd_file)}',
-                            timeout=10,
-                        )
-                        new_cwd = r2.stdout.strip()
-                        if new_cwd:
-                            self.cwd = new_cwd
-                    except Exception:
-                        pass
+                    # Defer cleanup and cwd update to a background thread so
+                    # complete_task is called immediately and the MCP server
+                    # sees DONE without waiting for extra SSH round-trips.
+                    _of, _pf, _ef, _cf = out_file, pid_file, ec_file, cmd_file
+                    _cwf = cwd_file
+                    def _deferred_cleanup(_self=self, _of=_of, _pf=_pf, _ef=_ef, _cf=_cf, _cwf=_cwf):
+                        try:
+                            _self._ssh_exec(f'rm -f {_of} {_pf} {_ef} {_cf}', timeout=10)
+                        except Exception:
+                            pass
+                        try:
+                            r2 = _self._ssh_exec(
+                                f'cat {shlex.quote(_cwf)} 2>/dev/null && rm -f {shlex.quote(_cwf)}',
+                                timeout=10,
+                            )
+                            new_cwd = r2.stdout.strip()
+                            if new_cwd:
+                                _self.cwd = new_cwd
+                        except Exception:
+                            pass
+                    threading.Thread(target=_deferred_cleanup, daemon=True).start()
                     return last_output, exit_code
 
             except Exception as e:
                 # SSH poll failed — remote command may still be running, just retry
                 print(f"[octo] SSH poll failed: {e}, retrying...")
+                # ControlMaster may have dropped (firewall idle timeout, server restart).
+                # Reconnect eagerly so the next poll goes through the fast mux path.
+                if self._use_control_master and not self._is_control_master_alive():
+                    print(f"[octo] ControlMaster dead, reconnecting...")
+                    try:
+                        self._ssh_connect()
+                    except Exception as e2:
+                        print(f"[octo] SSH reconnect failed: {e2}")
 
             time.sleep(STREAM_INTERVAL)
 

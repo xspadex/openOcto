@@ -86,6 +86,11 @@ export default {
       return handleASR(request, env);
     }
 
+    // ---- LLM Proxy: /llm/infer ----
+    if (url.pathname === "/llm/infer" && request.method === "POST") {
+      return handleLLM(request, env);
+    }
+
     if (!env.UPSTASH_URL || !env.UPSTASH_TOKEN) {
       return jsonResponse({ error: "Worker not configured" }, 500);
     }
@@ -185,16 +190,16 @@ async function handleASR(request, env) {
     return jsonResponse({ error: "ASR not configured on this relay" }, 503);
   }
 
-  // Per-IP rate limit: 50 ASR requests/day
+  // Per-IP rate limit
   const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
   const ipLimitId = env.RATE_LIMITER.idFromName(`asr:${clientIp}`);
   const ipLimitStub = env.RATE_LIMITER.get(ipLimitId);
   try {
     const checkUrl = new URL("https://dummy/check");
-    checkUrl.searchParams.set("limit", "50");
+    checkUrl.searchParams.set("limit", env.ASR_DAILY_LIMIT || "500");
     const resp = await ipLimitStub.fetch(checkUrl.toString());
     if (resp.status === 429) {
-      return jsonResponse({ error: "ASR daily limit reached (50/day per device)" }, 429);
+      return jsonResponse({ error: "ASR daily limit reached" }, 429);
     }
   } catch (e) { /* fail-open */ }
 
@@ -219,6 +224,51 @@ async function handleASR(request, env) {
     });
   } catch (err) {
     return jsonResponse({ error: `ASR upstream error: ${err.message}` }, 502);
+  }
+}
+
+async function handleLLM(request, env) {
+  const nvidiaUrl = (env.LLM_URL || "https://integrate.api.nvidia.com/v1").replace(/\/$/, "");
+  const nvidiaToken = env.LLM_TOKEN || "";
+  if (!nvidiaToken) {
+    return jsonResponse({ error: "LLM not configured on this relay" }, 503);
+  }
+
+  // Per-IP rate limit: 200 LLM requests/day
+  const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
+  const ipLimitId = env.RATE_LIMITER.idFromName(`llm:${clientIp}`);
+  const ipLimitStub = env.RATE_LIMITER.get(ipLimitId);
+  try {
+    const checkUrl = new URL("https://dummy/check");
+    checkUrl.searchParams.set("limit", env.LLM_DAILY_LIMIT || "200");
+    const resp = await ipLimitStub.fetch(checkUrl.toString());
+    if (resp.status === 429) {
+      return jsonResponse({ error: "LLM daily limit reached. Set your own NVIDIA_API_KEY for unlimited use: https://build.nvidia.com" }, 429);
+    }
+  } catch (e) { /* fail-open */ }
+
+  // Forward to NVIDIA (streaming pass-through)
+  try {
+    const body = await request.text();
+    const resp = await fetch(`${nvidiaUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${nvidiaToken}`,
+      },
+      body: body,
+    });
+
+    // Stream response back to client
+    return new Response(resp.body, {
+      status: resp.status,
+      headers: {
+        "Content-Type": resp.headers.get("Content-Type") || "application/json",
+        ...corsHeaders(),
+      },
+    });
+  } catch (err) {
+    return jsonResponse({ error: `LLM upstream error: ${err.message}` }, 502);
   }
 }
 
