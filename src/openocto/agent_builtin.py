@@ -1255,7 +1255,7 @@ def run_builtin_agent(model: str = None, backend: str = "auto"):
     for line in _OCTO_ART:
         print(f"{C_CYAN}{C_BOLD}{line}{C_RESET}")
     print()
-    print(f"{C_BOLD}OpenOcto Agent{C_RESET}  {C_DIM}v0.1.0 · {provider_name}: {model}{C_RESET}")
+    print(f"{C_BOLD}OpenOcto Agent{C_RESET}  {C_DIM}v0.1.1 · {provider_name}: {model}{C_RESET}")
     terminals = relay.list_terminals()
     online = sum(1 for t in terminals if t.get("online"))
     print(f"{C_DIM}{online} terminal{'s' if online != 1 else ''} online  ·  /help for commands{C_RESET}\n")

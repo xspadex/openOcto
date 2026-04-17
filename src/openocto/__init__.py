@@ -1,3 +1,3 @@
 """openOcto - Let your AI agent control any terminal, anywhere."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
