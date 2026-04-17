@@ -291,6 +291,7 @@ Agent:
 | Slow first response | Terminal in cool mode, auto-wakes on task (up to 60s) |
 | `pkill -f` kills the wrapper | Use bracket trick: `pkill -f "[t]rain_script"` |
 | Windows: `python3` not found | Daemon auto-detects `python` on Windows |
+| `CERTIFICATE_VERIFY_FAILED` on Windows / corporate networks | Your Python environment may not trust the system or corporate proxy CA. Try `pip install pip-system-certs`, then restart the terminal and retry. This is common with Conda/Miniforge behind HTTPS-inspecting firewalls. |
 
 ## License
 

@@ -293,6 +293,7 @@ src/openocto/
 | 首次响应慢 | 终端在 cool 模式，收到任务后自动唤醒（最多 60 秒） |
 | `pkill -f` 误杀 wrapper | 用括号技巧：`pkill -f "[t]rain_script"` |
 | Windows 找不到 `python3` | daemon 在 Windows 上自动检测 `python` |
+| Windows / 公司网络下出现 `CERTIFICATE_VERIFY_FAILED` | 你的 Python 环境可能不信任系统证书或公司 HTTPS 代理证书。可先执行 `pip install pip-system-certs`，重开终端后重试。这在 Conda / Miniforge 环境下较常见。 |
 
 ## 许可证
 

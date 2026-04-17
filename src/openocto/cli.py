@@ -123,7 +123,7 @@ def _poll_streaming(relay: Relay, target: str, task_id: str = None) -> int:
     printed_len = 0
     try:
         while True:
-            task = relay.poll_task(target)
+            task = relay.poll_task(target, task_id=task_id)
             if not task:
                 print("[octo] Task disappeared.", file=sys.stderr)
                 return 1
@@ -147,11 +147,11 @@ def _poll_streaming(relay: Relay, target: str, task_id: str = None) -> int:
     except KeyboardInterrupt:
         # Send kill signal
         print("\n[octo] Sending kill signal...", file=sys.stderr)
-        relay.update_task(target, {"status": "KILL"})
+        relay.update_task(target, {"status": "KILL"}, task_id=task_id)
         try:
             for _ in range(5):
                 time.sleep(1)
-                task = relay.poll_task(target)
+                task = relay.poll_task(target, task_id=task_id)
                 if task and task["status"] in ("DONE", "FAILED"):
                     output = task.get("output", "")
                     if len(output) > printed_len:
@@ -161,11 +161,11 @@ def _poll_streaming(relay: Relay, target: str, task_id: str = None) -> int:
         except KeyboardInterrupt:
             print("\n[octo] Force stop.", file=sys.stderr)
         finally:
-            relay.clear_task(target)
+            relay.clear_task(target, task_id=task_id)
         return 130
 
     exit_code = task.get("exit_code", 0) or 0
-    relay.clear_task(target)
+    relay.clear_task(target, task_id=task_id)
     return exit_code
 
 
@@ -301,6 +301,19 @@ def cmd_join(args):
                   proxy_url=rc.get("proxy_url", ""))
     name = args.name
     tags = [t.strip() for t in args.tags.split(",")] if args.tags else []
+
+    try:
+        existing = next((t for t in relay.list_terminals() if t["name"] == name), None)
+        if existing:
+            status = "online" if existing.get("online") else "offline"
+            print(
+                f"[octo] Warning: terminal name '{name}' already exists in this workspace "
+                f"({status}, last seen {existing.get('last_seen_ago', '?')}s ago). "
+                f"Registering again will replace the existing entry shown by 'octo ls'.",
+                file=sys.stderr,
+            )
+    except Exception:
+        pass
 
     if args.daemon:
         import subprocess as sp

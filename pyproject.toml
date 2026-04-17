@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openocto"
-version = "0.1.1"
+version = "0.1.2"
 description = "Any time, any device, anything. AI agent that controls all your terminals across firewalls."
 license = "Apache-2.0"
 requires-python = ">=3.8"
