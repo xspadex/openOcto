@@ -1,7 +1,7 @@
 """openOcto Agent Serve — AI agent daemon that processes natural language requests.
 
 Registers as a special terminal with ai_agent=true, polls for ai_request tasks,
-calls AI backend (Claude CLI, Anthropic API, OpenAI-compatible API, Ollama),
+calls AI backend (Claude CLI, Codex CLI, Anthropic API, OpenAI-compatible API, Ollama),
 executes octo commands via tool use, and streams results back.
 
 Usage:
@@ -42,6 +42,9 @@ def detect_backends() -> list:
 
     if shutil.which("claude"):
         backends.append({"type": "claude-cli", "label": "Claude Code CLI"})
+
+    if shutil.which("codex"):
+        backends.append({"type": "codex-cli", "label": "Codex CLI"})
 
     if os.environ.get("ANTHROPIC_API_KEY"):
         backends.append({"type": "anthropic-api", "label": "Anthropic API"})
@@ -466,6 +469,30 @@ def process_claude_cli(relay: Relay, self_name: str, prompt: str,
         return f"[claude CLI error: {e}]"
 
 
+def process_codex_cli(relay: Relay, self_name: str, prompt: str,
+                      model: str = None, on_output=None) -> str:
+    """Process request via codex exec (single-turn, no tool use)."""
+    cmd = ["codex", "exec", "--skip-git-repo-check", "-"]
+    if model:
+        cmd[2:2] = ["--model", model]
+    try:
+        result = subprocess.run(
+            cmd,
+            input=prompt,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        output = result.stdout.strip() or result.stderr.strip()
+        if on_output and output:
+            on_output(output)
+        return output
+    except subprocess.TimeoutExpired:
+        return "[codex CLI timed out]"
+    except Exception as e:
+        return f"[codex CLI error: {e}]"
+
+
 def process_ollama(relay: Relay, self_name: str, prompt: str,
                    model: str = None, on_output=None) -> str:
     """Process request via Ollama (OpenAI-compatible mode, no tool use)."""
@@ -514,7 +541,7 @@ def run_agent_serve(relay: Relay = None, name: str = None,
     if not backends:
         print(f"[agent] No AI backend available.", file=sys.stderr)
         if not backend:
-            print(f"[agent] Install claude CLI, set ANTHROPIC_API_KEY, OPENAI_API_KEY, or run Ollama.", file=sys.stderr)
+            print(f"[agent] Install claude/codex CLI, set ANTHROPIC_API_KEY, OPENAI_API_KEY, or run Ollama.", file=sys.stderr)
         sys.exit(1)
 
     active_backend = backends[0]
@@ -585,6 +612,8 @@ def run_agent_serve(relay: Relay = None, name: str = None,
                                 result = process_openai(relay, name, prompt, model=model, on_output=on_output)
                             elif bt == "claude-cli":
                                 result = process_claude_cli(relay, name, prompt, on_output=on_output)
+                            elif bt == "codex-cli":
+                                result = process_codex_cli(relay, name, prompt, model=model, on_output=on_output)
                             elif bt == "ollama":
                                 result = process_ollama(relay, name, prompt, model=model, on_output=on_output)
                             else:

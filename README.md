@@ -278,6 +278,9 @@ Network & Permissions:
 
 Agent:
   octo agent-md                          Generate CLAUDE.md
+  octo agent --backend claude            Start Claude Code with phone sync
+  octo agent --backend codex             Start Codex with phone sync
+  octo agent-serve --backend codex-cli   Start Codex agent daemon
   octo mcp-server                        Start MCP server
 ```
 

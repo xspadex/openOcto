@@ -27,7 +27,7 @@ from .daemon import REDIS_TRANSFER_MAX, LAN_PORT
 
 PROTOCOL_VERSION = "2025-03-26"
 SERVER_NAME = "openocto"
-SERVER_VERSION = "0.1.2"
+SERVER_VERSION = "0.1.3"
 
 POLL_INTERVAL = 1  # seconds between polls when waiting for task result
 TASK_WAIT_TIMEOUT = 3600  # max seconds to wait for a task result

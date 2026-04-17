@@ -172,7 +172,7 @@ class MainActivity : AppCompatActivity() {
 
         // About
         layout.addView(TextView(this).apply {
-            text = "\nv0.1.2 · Apache 2.0 · github.com/openocto"
+            text = "\nv0.1.3 · Apache 2.0 · github.com/openocto"
             textSize = 11f
             setTextColor(0xFF888888.toInt())
             setPadding(0, dp(8), 0, dp(16))

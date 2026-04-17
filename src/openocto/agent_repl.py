@@ -1,14 +1,16 @@
 """octo agent — interactive AI agent with phone sync.
 
-Launches the built-in agent by default, or Claude Code CLI via --backend claude.
+Launches the built-in agent by default, or Claude Code / Codex CLI via tmux.
 
 Usage:
     octo agent                      # built-in agent (auto-detect API key)
     octo agent --backend claude     # Claude Code CLI in tmux
+    octo agent --backend codex      # Codex CLI in tmux
     octo agent --backend openrouter # built-in with OpenRouter
 """
 
 import os
+import shlex
 import shutil
 import signal
 import subprocess
@@ -126,6 +128,43 @@ _sharing = False
 _current_backend = ""
 
 
+def _require_tmux(backend_label: str):
+    if not _has("tmux"):
+        print(f"[octo] tmux is required for {backend_label} session sharing.")
+        print("  Install: brew install tmux  (macOS)")
+        print("           apt install tmux   (Linux)")
+        print("           pacman -S tmux     (Arch)")
+        sys.exit(1)
+
+
+def _build_special_backend_command(backend: str, model: str = None,
+                                   extra_args: str = None) -> str:
+    if backend == "claude":
+        _require_tmux("Claude Code")
+        if not _has("claude"):
+            print("[octo] Claude Code CLI not found.")
+            print("  Install: https://claude.ai/code")
+            sys.exit(1)
+        parts = ["claude"]
+        if model:
+            parts += ["--model", model]
+    elif backend == "codex":
+        _require_tmux("Codex")
+        if not _has("codex"):
+            print("[octo] Codex CLI not found.")
+            print("  Install Codex CLI and ensure 'codex' is on PATH.")
+            sys.exit(1)
+        parts = ["codex"]
+        if model:
+            parts += ["--model", model]
+    else:
+        raise ValueError(f"Unsupported special backend: {backend}")
+
+    if extra_args:
+        parts.extend(shlex.split(extra_args))
+    return shlex.join(parts)
+
+
 def run_agent(backend: str = "auto", model: str = None, name: str = None,
               extra_args: str = None):
     global _sharing, _current_backend
@@ -133,8 +172,14 @@ def run_agent(backend: str = "auto", model: str = None, name: str = None,
     # Auto / builtin path — no tmux needed
     if backend == "auto":
         backend = "builtin"
+        hints = []
         if _has("claude"):
-            print("[octo] Tip: Claude Code CLI detected. Use --backend claude for Claude Code.")
+            hints.append("--backend claude")
+        if _has("codex"):
+            hints.append("--backend codex")
+        if hints:
+            joined = " or ".join(hints)
+            print(f"[octo] Tip: CLI agent detected. Use {joined} for tmux-based phone sync.")
 
     if backend in ("builtin", "anthropic", "openai", "openrouter",
                     "deepseek", "siliconflow", "qwen", "nvidia", "ollama"):
@@ -143,28 +188,13 @@ def run_agent(backend: str = "auto", model: str = None, name: str = None,
         run_builtin_agent(model=model, backend=llm_backend)
         return
 
-    # Claude Code CLI path — needs tmux
-    if backend == "claude":
-        if not _has("tmux"):
-            print("[octo] tmux is required for Claude Code session sharing.")
-            print("  Install: brew install tmux  (macOS)")
-            print("           apt install tmux   (Linux)")
-            print("           pacman -S tmux     (Arch)")
-            sys.exit(1)
-        if not _has("claude"):
-            print("[octo] Claude Code CLI not found.")
-            print("  Install: https://claude.ai/code")
-            sys.exit(1)
-        command = "claude"
-        if model:
-            command += f" --model {model}"
-        if extra_args:
-            command += f" {extra_args}"
+    # Claude Code / Codex CLI path — needs tmux
+    if backend in ("claude", "codex"):
+        command = _build_special_backend_command(backend, model=model,
+                                                 extra_args=extra_args)
     else:
         # Treat as arbitrary command (needs tmux)
-        if not _has("tmux"):
-            print("[octo] tmux is required for custom backend session sharing.")
-            sys.exit(1)
+        _require_tmux("custom backend")
         command = backend
 
     _current_backend = backend

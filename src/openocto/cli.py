@@ -1543,7 +1543,7 @@ def main():
     # agent (interactive)
     p = sub.add_parser("agent", help="Start interactive AI agent with phone sync")
     p.add_argument("--backend", "-b", default="auto",
-                   help="Backend: auto, claude, anthropic, openai, openrouter, deepseek, siliconflow, qwen, nvidia, ollama")
+                   help="Backend: auto, claude, codex, anthropic, openai, openrouter, deepseek, siliconflow, qwen, nvidia, ollama")
     p.add_argument("--model", "-m", default=None, help="Model name override")
     p.add_argument("--name", "-n", default=None, help="Session name for phone sync")
     p.add_argument("args", nargs="*", default=[], help="Extra arguments passed to backend (e.g. claude flags)")
@@ -1552,7 +1552,7 @@ def main():
     p = sub.add_parser("agent-serve", help="Start AI agent daemon")
     p.add_argument("--name", "-n", default=None, help="Agent name (default: hostname_agent)")
     p.add_argument("--backend", default=None,
-                   choices=["claude-cli", "anthropic-api", "openai-api", "ollama"],
+                   choices=["claude-cli", "codex-cli", "anthropic-api", "openai-api", "ollama"],
                    help="AI backend to use (default: auto-detect)")
     p.add_argument("--model", default=None, help="Model name override")
 

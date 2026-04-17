@@ -280,6 +280,9 @@ src/openocto/
 
 代理:
   octo agent-md                          生成 CLAUDE.md
+  octo agent --backend claude            启动 Claude Code 并同步到手机
+  octo agent --backend codex             启动 Codex 并同步到手机
+  octo agent-serve --backend codex-cli   启动 Codex agent daemon
   octo mcp-server                        启动 MCP 服务器
 ```
 
