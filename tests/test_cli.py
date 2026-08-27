@@ -1,5 +1,7 @@
 """Tests for CLI task polling behavior."""
 
+from types import SimpleNamespace
+
 from openocto import cli
 
 
@@ -49,3 +51,69 @@ def test_poll_streaming_legacy_mode_still_uses_legacy_key():
     assert exit_code == 0
     assert relay.polled == [("gpu", None)]
     assert relay.cleared == [("gpu", None)]
+
+
+def test_cmd_run_wakes_daemon_after_submitting_task(monkeypatch):
+    events = []
+
+    class RunRelay:
+        def list_terminals(self):
+            return [{
+                "name": "gpu",
+                "online": True,
+                "last_seen_ago": 0,
+                "meta": {},
+            }]
+
+        def submit_task(self, target, **kwargs):
+            events.append(("submit", target))
+            return kwargs["task_id"]
+
+    relay = RunRelay()
+    monkeypatch.setattr(cli, "_get_relay", lambda: relay)
+    monkeypatch.setattr(cli, "_get_auth_kwargs", lambda *args, **kwargs: {})
+    monkeypatch.setattr(
+        cli, "_wake_daemon",
+        lambda actual_relay, target: events.append(("wake", target)),
+    )
+    args = SimpleNamespace(
+        target="gpu",
+        command="pwd",
+        timeout=None,
+        no_log=False,
+        notify=None,
+        notify_message="",
+        nowait=True,
+    )
+
+    cli.cmd_run(args)
+
+    assert events == [("submit", "gpu"), ("wake", "gpu")]
+
+
+def test_wake_daemon_pokes_registered_lan_endpoint(monkeypatch):
+    class RelayWithLanMeta:
+        def list_terminals(self):
+            return [{
+                "name": "gpu",
+                "meta": {"lan_ip": "192.168.1.10", "lan_port": 9527},
+            }]
+
+    requests = []
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    def fake_urlopen(request, timeout):
+        requests.append((request.full_url, timeout))
+        return Response()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+    cli._wake_daemon(RelayWithLanMeta(), "gpu")
+
+    assert requests == [("http://192.168.1.10:9527/wake", 2)]

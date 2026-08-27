@@ -401,6 +401,7 @@ def cmd_run(args):
     extra.update(_get_auth_kwargs(relay, task_id=task_id, task_type="shell"))
     task_id = relay.submit_task(target, task_type="shell", command=command,
                                 task_id=task_id, **extra)
+    _wake_daemon(relay, target)
     print(f"[octo] Executing on '{target}': {command[:80]}{'...' if len(command) > 80 else ''}", file=sys.stderr)
 
     if args.nowait:
@@ -666,6 +667,26 @@ def _get_terminal_meta(relay: Relay, name: str) -> dict:
         if t["name"] == name:
             return t.get("meta", {})
     return {}
+
+
+def _wake_daemon(relay: Relay, target: str) -> None:
+    """Best-effort LAN wake to interrupt a sleeping daemon poll."""
+    import urllib.request
+
+    try:
+        meta = _get_terminal_meta(relay, target)
+        ip = meta.get("lan_ip", "")
+        port = meta.get("lan_port", LAN_PORT)
+        if not ip:
+            return
+        url = f"http://{ip}:{port}/wake"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=2):
+            pass
+    except Exception:
+        # The relay remains the source of truth; LAN wake is only an
+        # acceleration when the CLI can reach the target directly.
+        pass
 
 
 def _lan_reachable(ip: str, port: int, timeout: float = 1.0) -> bool:
