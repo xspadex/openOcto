@@ -67,6 +67,9 @@ pip install openocto
 octo join --token "$(octo token)" --name gpu --tags "gpu,cuda"
 ```
 
+> Windows workers require PowerShell 7 (`pwsh.exe`). The Python daemon uses it
+> for shell tasks and does not fall back to Windows PowerShell 5.1.
+>
 > Run `octo token` on your local machine first to get a join token. This avoids repeating `octo init` on every machine.
 
 **Option B** — Remote has no internet? Use a jump server with `--ssh`:

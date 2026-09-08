@@ -69,6 +69,9 @@ pip install openocto
 octo join --token "$(octo token)" --name gpu --tags "gpu,cuda"
 ```
 
+> Windows 工作端需要 PowerShell 7（`pwsh.exe`）。Python daemon 使用它执行
+> shell 任务，并且不会回退到 Windows PowerShell 5.1。
+>
 > 先在本地机器运行 `octo token` 获取加入令牌，这样远程机器不需要再跑 `octo init`。
 
 **方式 B** —— 远程机器没网？用跳板机 + `--ssh`：
