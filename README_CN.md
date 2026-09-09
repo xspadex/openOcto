@@ -300,6 +300,52 @@ src/openocto/
 | `pkill -f` 误杀 wrapper | 用括号技巧：`pkill -f "[t]rain_script"` |
 | Windows 找不到 `python3` | daemon 在 Windows 上自动检测 `python` |
 | Windows / 公司网络下出现 `CERTIFICATE_VERIFY_FAILED` | 你的 Python 环境可能不信任系统证书或公司 HTTPS 代理证书。可先执行 `pip install pip-system-certs`，重开终端后重试。这在 Conda / Miniforge 环境下较常见。 |
+| 注册中继失败：`Connection failed (direct + proxy)` / `Tunnel connection failed: 403` | 终端里的 `HTTP(S)_PROXY` 指向了 IDE 内部代理，或公司安全网关拦截了中继域名。改用浏览器实际使用的公司代理启动 daemon，见下节。 |
+
+### 公司网络 / 代理环境下的启动
+
+在受管控的公司网络中，daemon 注册中继可能失败（`~/.octo/daemon.log` 报
+`Connection failed (direct + proxy): Tunnel connection failed: 403`）。常见原因：
+
+1. **`HTTP(S)_PROXY` 指向 IDE 内部代理**：部分 AI 编码工具（如 opencode）会在其终端里注入
+   `HTTPS_PROXY=http://localhost:PORT`。这类端口只放行自家 API，不是通用代理，
+   CONNECT 其他域名一律返回 403。
+2. **公司安全网关（SWG）拦截中继域名**：请求被 302 跳转到网关警告页
+   （"您访问的网站可能存在安全风险"），Python 请求拿到的是 HTML 而非 JSON。
+3. **直连被防火墙拦截**：不走代理直接超时。
+
+解决步骤：
+
+1. **找到浏览器实际使用的代理**。浏览器能正常上网说明该代理可用：
+   - Windows：注册表 `HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings`
+     中的 `ProxyServer` 值（或"设置 → 网络 → 代理"），例如 `proxy.example.com:8080`。
+2. **在浏览器中打开中继地址**（`~/.octo/config.json` 里的 `redis_url`）。
+   若弹出安全网关风险警告页，点击"接受风险并继续"——网关会按用户身份放行该域名，
+   之后同一账号经代理发出的请求不再被拦。
+3. **用浏览器同款代理并带上认证启动 daemon**（把 `USER:PASS` 换成实际账号密码；
+   密码中的特殊字符需 URL 编码，例如 `@` 写作 `%40`）：
+
+   ```powershell
+   # PowerShell
+   $env:HTTP_PROXY  = "http://USER:PASS@proxy.example.com:8080"
+   $env:HTTPS_PROXY = "http://USER:PASS@proxy.example.com:8080"
+   octo join --name NAME --daemon
+   ```
+
+   ```bash
+   # bash
+   HTTP_PROXY=http://USER:PASS@proxy.example.com:8080 \
+     HTTPS_PROXY=http://USER:PASS@proxy.example.com:8080 \
+     octo join --name NAME --daemon
+   ```
+
+4. **验证**：`octo ls` 应显示该终端 online。
+
+> 注意：
+> - 后台 daemon 会继承启动时的环境变量。如果网络环境变化导致中继失联，先结束旧
+>   daemon 进程，再带正确代理重新启动。
+> - 从源码运行时还需设置 `PYTHONPATH` 指向仓库的 `src/` 目录。
+> - 不要把带密码的代理地址提交到仓库或写入会被同步的配置文件。
 
 ## 许可证
 
