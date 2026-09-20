@@ -53,7 +53,7 @@ def test_poll_streaming_legacy_mode_still_uses_legacy_key():
     assert relay.cleared == [("gpu", None)]
 
 
-def test_cmd_run_wakes_daemon_after_submitting_task(monkeypatch):
+def test_cmd_run_wakes_daemon_after_submitting_task(monkeypatch, capsys):
     events = []
 
     class RunRelay:
@@ -89,6 +89,51 @@ def test_cmd_run_wakes_daemon_after_submitting_task(monkeypatch):
     cli.cmd_run(args)
 
     assert events == [("submit", "gpu"), ("wake", "gpu")]
+    assert "Task submitted (nowait):" in capsys.readouterr().err
+
+
+def test_cmd_logs_queries_exact_task_id(monkeypatch, capsys):
+    relay = StubRelay(
+        {
+            "id": "gpu-task-123",
+            "status": "DONE",
+            "exit_code": 0,
+            "output": '{"status":"DEPLOYED"}',
+        }
+    )
+    monkeypatch.setattr(cli, "_get_relay", lambda: relay)
+    args = SimpleNamespace(
+        target="gpu",
+        task_id="gpu-task-123",
+        follow=False,
+        tail=20,
+    )
+
+    cli.cmd_logs(args)
+
+    assert relay.polled == [("gpu", "gpu-task-123")]
+    assert '{"status":"DEPLOYED"}' in capsys.readouterr().out
+
+
+def test_cmd_kill_targets_exact_task_id(monkeypatch, capsys):
+    relay = StubRelay(
+        {
+            "id": "gpu-task-123",
+            "status": "RUNNING",
+            "exit_code": None,
+            "output": "",
+        }
+    )
+    monkeypatch.setattr(cli, "_get_relay", lambda: relay)
+    args = SimpleNamespace(target="gpu", task_id="gpu-task-123")
+
+    cli.cmd_kill(args)
+
+    assert relay.polled == [("gpu", "gpu-task-123")]
+    assert relay.updated == [
+        ("gpu", {"status": "KILL"}, "gpu-task-123")
+    ]
+    assert "gpu-task-123" in capsys.readouterr().out
 
 
 def test_wake_daemon_pokes_registered_lan_endpoint(monkeypatch):

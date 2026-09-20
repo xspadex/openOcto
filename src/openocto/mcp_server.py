@@ -51,7 +51,7 @@ TOOLS = [
     },
     {
         "name": "remote_run",
-        "description": "Execute a shell command on a remote terminal. Output streams until completion. Working directory persists between calls.",
+        "description": "Execute a shell command on a remote terminal. Set nowait to submit and return a task ID immediately. Working directory persists between calls.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -66,6 +66,10 @@ TOOLS = [
                 "timeout": {
                     "type": "integer",
                     "description": "Timeout in seconds (default: 3600)",
+                },
+                "nowait": {
+                    "type": "boolean",
+                    "description": "Submit and return task ID without waiting (default: false)",
                 },
                 "no_log": {
                     "type": "boolean",
@@ -201,6 +205,10 @@ TOOLS = [
                     "type": "integer",
                     "description": "Show last N lines of log file (default: all)",
                 },
+                "task_id": {
+                    "type": "string",
+                    "description": "Read one exact task ID instead of the current task",
+                },
             },
             "required": ["terminal"],
         },
@@ -214,6 +222,10 @@ TOOLS = [
                 "terminal": {
                     "type": "string",
                     "description": "Target terminal name",
+                },
+                "task_id": {
+                    "type": "string",
+                    "description": "Kill one exact task ID instead of the current task",
                 },
             },
             "required": ["terminal"],
@@ -497,6 +509,15 @@ def handle_remote_run(args: dict, progress_token=None) -> tuple:
     if args.get("notify_message"):
         extra["notify_message"] = args["notify_message"]
     task_id = relay.submit_task(terminal, task_type="shell", command=command, **extra)
+    if args.get("nowait"):
+        return json.dumps(
+            {
+                "status": "SUBMITTED",
+                "terminal": terminal,
+                "taskId": task_id,
+            },
+            sort_keys=True,
+        ), False
     # Wait timeout = command timeout + buffer for daemon pickup & network latency.
     # Without this, short command timeouts (e.g. 10s) expire before the daemon
     # even picks up the task from the queue.
@@ -609,7 +630,8 @@ def handle_remote_logs(args: dict) -> tuple:
     terminal = args["terminal"]
 
     # Check if there's a current task in Redis
-    task = relay.poll_task(terminal)
+    task_id = args.get("task_id")
+    task = relay.poll_task(terminal, task_id=task_id)
     if task:
         output = task.get("output", "")
         status = task.get("status", "UNKNOWN")
@@ -618,6 +640,8 @@ def handle_remote_logs(args: dict) -> tuple:
         if exit_code is not None:
             header += f" (exit code: {exit_code})"
         return f"{header}\n{output}", False
+    if task_id:
+        return f"Task not found: {task_id}", True
 
     # No task in Redis — read last log file from remote
     tail = args.get("tail")
@@ -637,16 +661,17 @@ def handle_remote_logs(args: dict) -> tuple:
 def handle_remote_kill(args: dict) -> tuple:
     relay = _get_relay()
     terminal = args["terminal"]
-    task = relay.poll_task(terminal)
+    requested_id = args.get("task_id")
+    task = relay.poll_task(terminal, task_id=requested_id)
     if not task or task["status"] not in ("PENDING", "RUNNING"):
-        return f"No active task on '{terminal}'.", False
-    task_id = task.get("id")
-    # Write kill signal to both per-task key and legacy key so the daemon
-    # sees it regardless of which key it checks.
+        suffix = f" with ID {requested_id}" if requested_id else ""
+        return f"No active task on '{terminal}'{suffix}.", False
+    task_id = requested_id or task.get("id")
     if task_id:
         relay.update_task(terminal, {"status": "KILL"}, task_id=task_id)
-    relay.update_task(terminal, {"status": "KILL"})
-    return f"Kill signal sent to '{terminal}'.", False
+    else:
+        relay.update_task(terminal, {"status": "KILL"})
+    return f"Kill signal sent to '{terminal}' ({task_id or 'current'}).", False
 
 
 def handle_remote_wake(args: dict) -> tuple:

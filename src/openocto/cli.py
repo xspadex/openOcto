@@ -405,7 +405,7 @@ def cmd_run(args):
     print(f"[octo] Executing on '{target}': {command[:80]}{'...' if len(command) > 80 else ''}", file=sys.stderr)
 
     if args.nowait:
-        print("[octo] Task submitted (nowait).", file=sys.stderr)
+        print(f"[octo] Task submitted (nowait): {task_id}", file=sys.stderr)
         return
 
     sys.exit(_poll_streaming(relay, target, task_id=task_id))
@@ -483,22 +483,29 @@ def cmd_grep(args):
 def cmd_kill(args):
     relay = _get_relay()
     target = args.target
+    task_id = getattr(args, "task_id", None)
 
-    task = relay.poll_task(target)
+    task = relay.poll_task(target, task_id=task_id)
     if not task or task["status"] not in ("PENDING", "RUNNING"):
-        print(f"[octo] No active task on '{target}'.", file=sys.stderr)
+        suffix = f" with ID {task_id}" if task_id else ""
+        print(f"[octo] No active task on '{target}'{suffix}.", file=sys.stderr)
         return
 
-    relay.update_task(target, {"status": "KILL"})
-    print(f"[octo] Kill signal sent to '{target}'.")
+    resolved_id = task_id or task.get("id")
+    if resolved_id:
+        relay.update_task(target, {"status": "KILL"}, task_id=resolved_id)
+    else:
+        relay.update_task(target, {"status": "KILL"})
+    print(f"[octo] Kill signal sent to '{target}' ({resolved_id or 'current'}).")
 
 
 def cmd_logs(args):
     relay = _get_relay()
     target = args.target
+    task_id = getattr(args, "task_id", None)
 
     # First check if there's a task in Redis
-    task = relay.poll_task(target)
+    task = relay.poll_task(target, task_id=task_id)
     if task:
         output = task.get("output", "")
         status = task.get("status", "UNKNOWN")
@@ -528,6 +535,9 @@ def cmd_logs(args):
         else:
             exit_code = task.get("exit_code", 0) or 0
             print(f"\n[octo] Task {status} (exit code: {exit_code})", file=sys.stderr)
+        return
+    if task_id:
+        print(f"[octo] Task not found: {task_id}", file=sys.stderr)
         return
 
     # No task in Redis — read the log file from remote
@@ -1493,12 +1503,14 @@ def main():
     # logs
     p = sub.add_parser("logs", help="View task output or log file from remote")
     p.add_argument("target", help="Target terminal name")
+    p.add_argument("--task-id", default=None, help="Query one exact task ID")
     p.add_argument("-f", "--follow", action="store_true", help="Follow output of running task")
     p.add_argument("--tail", type=int, default=None, help="Show last N lines of log file")
 
     # kill
     p = sub.add_parser("kill", help="Kill running command on a terminal")
     p.add_argument("target", help="Target terminal name")
+    p.add_argument("--task-id", default=None, help="Kill one exact task ID")
 
     # wake
     p = sub.add_parser("wake", help="Switch terminal to fast polling mode")
