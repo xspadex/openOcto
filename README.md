@@ -108,6 +108,17 @@ Add to `.mcp.json` in your project:
 
 Claude Code (or any MCP-compatible agent) can now control your remote terminals directly.
 
+### Agent Skills
+
+Portable skills live in `.agents/skills/` as the canonical source:
+
+- `openocto-jump-hosts` discovers and uses SSH targets behind a jump terminal.
+- `openocto-tmux` manages persistent tmux sessions through that route.
+
+Both skills support OpenOcto MCP tools and the authenticated `octo` CLI.
+Client-specific directories such as `.cursor/skills/` contain only adapters
+that load the canonical skills.
+
 ## Training Notifications
 
 Get notified on your phone when a training job finishes — or fails:

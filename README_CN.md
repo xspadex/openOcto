@@ -110,6 +110,16 @@ octo kill gpu                        # 终止运行中的命令
 
 Claude Code（或任何兼容 MCP 的代理）即可直接控制你的远程终端。
 
+### Agent Skills
+
+跨 Agent 技能以 `.agents/skills/` 作为唯一规范源：
+
+- `openocto-jump-hosts` 用于发现并访问跳板机后的 SSH 目标。
+- `openocto-tmux` 用于通过该链路管理持久 tmux 会话。
+
+两个技能均支持 OpenOcto MCP 工具和已认证的 `octo` CLI。
+`.cursor/skills/` 等客户端专用目录只保留加载规范技能的适配入口。
+
 ## 训练通知
 
 训练跑完或报错，手机自动收到通知：
