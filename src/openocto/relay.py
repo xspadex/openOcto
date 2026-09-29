@@ -67,11 +67,19 @@ class Relay:
             try:
                 data = json.loads(raw)
             except json.JSONDecodeError:
-                raise RelayError(f"Invalid JSON from relay: {raw[:200]}")
+                # Non-JSON response (e.g. corporate gateway block page after a
+                # 302 redirect). Raise URLError so the retry loop in _request()
+                # treats it as transient instead of failing immediately.
+                raise urllib.error.URLError(
+                    f"Non-JSON response from relay (gateway block page?): {raw[:120]}")
             return data.get("result")
 
-    def _request(self, *args: str, _retries: int = 3) -> Any:
-        """Execute a Redis REST command. Tries direct first, falls back to proxy."""
+    def _request(self, *args: str, _retries: int = 5) -> Any:
+        """Execute a Redis REST command. Tries direct first, falls back to proxy.
+
+        Retries help ride out corporate gateways that intermittently intercept
+        some requests with a redirect to a block page (see _do_request).
+        """
         path = "/" + "/".join(urllib.request.quote(str(a), safe="") for a in args)
 
         # Determine order: if sticky proxy or no direct, go proxy first

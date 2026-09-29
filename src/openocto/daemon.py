@@ -14,6 +14,7 @@ import os
 import re
 import signal
 import shlex
+import shutil
 import socket
 import subprocess
 import sys
@@ -54,6 +55,44 @@ TRANSFER_KEY_TTL = 600  # 10 minutes TTL for transfer keys
 def _ps_quote(s: str) -> str:
     """Quote a string for PowerShell (single quotes, double '' to escape)."""
     return "'" + s.replace("'", "''") + "'"
+
+
+def _resolve_pwsh() -> str:
+    """Resolve PowerShell 7 without falling back to Windows PowerShell 5.1."""
+    override = os.environ.get("OCTO_PWSH", "").strip()
+    if override:
+        candidate = os.path.expandvars(os.path.expanduser(override))
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+        if os.path.isfile(candidate):
+            return candidate
+        raise FileNotFoundError(
+            f"OCTO_PWSH points to a missing executable: {candidate}"
+        )
+
+    resolved = shutil.which("pwsh")
+    if resolved:
+        return resolved
+
+    candidates = [
+        os.path.join(
+            os.environ.get("ProgramFiles", r"C:\Program Files"),
+            "PowerShell", "7", "pwsh.exe",
+        ),
+        os.path.join(
+            os.environ.get("LOCALAPPDATA", ""),
+            "Microsoft", "WindowsApps", "pwsh.exe",
+        ),
+    ]
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate):
+            return candidate
+
+    raise FileNotFoundError(
+        "PowerShell 7 (pwsh.exe) is required for Windows terminals. "
+        "Install PowerShell 7 and ensure pwsh.exe is on PATH, or set OCTO_PWSH."
+    )
 
 
 def _get_lan_ip() -> str:
@@ -274,11 +313,13 @@ class Daemon:
         # For local mode, cwd defaults to current dir
         self.cwd = cwd or ("~" if ssh else os.getcwd())
 
-        # Detect shell: SSH always uses bash; local uses platform default
+        # Detect shell: SSH always uses bash; Windows requires PowerShell 7.
+        self._powershell_executable = None
         if ssh:
             self._shell = "bash"
         elif sys.platform == "win32":
             self._shell = "powershell"
+            self._powershell_executable = _resolve_pwsh()
         else:
             self._shell = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
 
@@ -413,6 +454,7 @@ class Daemon:
             "cwd": self.cwd,
             "ssh": self.ssh or "",
             "shell": self._shell,
+            "shell_version": "7" if self._powershell_executable else "",
             "platform": sys.platform,
             "lan_ip": self._lan_ip,
             "lan_port": self._lan_port,
@@ -672,6 +714,7 @@ class Daemon:
                             "cwd": self.cwd,
                             "ssh": self.ssh or "",
                             "shell": self._shell,
+                            "shell_version": "7" if self._powershell_executable else "",
                             "platform": sys.platform,
                             "lan_ip": self._lan_ip,
                             "lan_port": self._lan_port,
@@ -1216,7 +1259,10 @@ class Daemon:
             if self.verbose:
                 print(f"  [verbose] PowerShell wrapped:\n{wrapped[:500]}")
             proc = subprocess.Popen(
-                ["powershell", "-NoProfile", "-NonInteractive", "-Command", "-"],
+                [
+                    self._powershell_executable,
+                    "-NoProfile", "-NonInteractive", "-Command", "-",
+                ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 stdin=subprocess.PIPE,

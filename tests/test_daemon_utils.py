@@ -1,7 +1,10 @@
 """Tests for daemon utility functions (path validation, shell wrapping, PS quoting)."""
 
+import io
+
 import pytest
-from openocto.daemon import _is_safe_path, _ps_quote
+from openocto import daemon as daemon_module
+from openocto.daemon import Daemon, _is_safe_path, _ps_quote, _resolve_pwsh
 
 
 # ---- _is_safe_path ----
@@ -82,3 +85,80 @@ class TestPsQuote:
 
     def test_path_with_spaces(self):
         assert _ps_quote("C:\\Program Files\\app") == "'C:\\Program Files\\app'"
+
+
+# ---- PowerShell 7 resolution and execution ----
+
+class TestPowerShell7:
+    def test_resolve_pwsh_from_path(self, monkeypatch):
+        expected = "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+        monkeypatch.delenv("OCTO_PWSH", raising=False)
+        monkeypatch.setattr(
+            daemon_module.shutil,
+            "which",
+            lambda command: expected if command == "pwsh" else None,
+        )
+
+        assert _resolve_pwsh() == expected
+
+    def test_resolve_pwsh_does_not_fallback_to_powershell_51(self, monkeypatch):
+        monkeypatch.delenv("OCTO_PWSH", raising=False)
+        monkeypatch.setattr(daemon_module.shutil, "which", lambda command: None)
+        monkeypatch.setattr(daemon_module.os.path, "isfile", lambda path: False)
+
+        with pytest.raises(FileNotFoundError, match="PowerShell 7"):
+            _resolve_pwsh()
+
+    def test_shell_tasks_launch_resolved_pwsh(self, monkeypatch, tmp_path):
+        executable = "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+        launched = []
+
+        class RecordingStdin:
+            def __init__(self):
+                self.data = b""
+
+            def write(self, data):
+                self.data += data
+
+            def close(self):
+                pass
+
+        class CompletedProcess:
+            def __init__(self):
+                self.stdin = RecordingStdin()
+                self.stdout = io.BytesIO()
+                self.returncode = 0
+
+            def poll(self):
+                return 0
+
+            def wait(self, timeout=None):
+                return self.returncode
+
+        def fake_popen(args, **kwargs):
+            proc = CompletedProcess()
+            launched.append((args, kwargs, proc))
+            return proc
+
+        monkeypatch.setattr(daemon_module.subprocess, "Popen", fake_popen)
+
+        worker = Daemon.__new__(Daemon)
+        worker.name = "pwsh-test"
+        worker.cwd = str(tmp_path)
+        worker.ssh = None
+        worker.verbose = False
+        worker._shell = "powershell"
+        worker._powershell_executable = executable
+        worker._current_proc = None
+
+        output, exit_code = worker._exec_shell({
+            "id": "task-1",
+            "command": "Write-Output ok",
+            "timeout": 5,
+            "no_log": True,
+        })
+
+        assert exit_code == 0
+        assert output == ""
+        assert launched[0][0][0] == executable
+        assert b"Write-Output ok" in launched[0][2].stdin.data

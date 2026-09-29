@@ -67,6 +67,9 @@ pip install openocto
 octo join --token "$(octo token)" --name gpu --tags "gpu,cuda"
 ```
 
+> Windows workers require PowerShell 7 (`pwsh.exe`). The Python daemon uses it
+> for shell tasks and does not fall back to Windows PowerShell 5.1.
+>
 > Run `octo token` on your local machine first to get a join token. This avoids repeating `octo init` on every machine.
 
 **Option B** — Remote has no internet? Use a jump server with `--ssh`:
@@ -104,6 +107,17 @@ Add to `.mcp.json` in your project:
 ```
 
 Claude Code (or any MCP-compatible agent) can now control your remote terminals directly.
+
+### Agent Skills
+
+Portable skills live in `.agents/skills/` as the canonical source:
+
+- `openocto-jump-hosts` discovers and uses SSH targets behind a jump terminal.
+- `openocto-tmux` manages persistent tmux sessions through that route.
+
+Both skills support OpenOcto MCP tools and the authenticated `octo` CLI.
+Client-specific directories such as `.cursor/skills/` contain only adapters
+that load the canonical skills.
 
 ## Training Notifications
 
@@ -295,6 +309,64 @@ Agent:
 | `pkill -f` kills the wrapper | Use bracket trick: `pkill -f "[t]rain_script"` |
 | Windows: `python3` not found | Daemon auto-detects `python` on Windows |
 | `CERTIFICATE_VERIFY_FAILED` on Windows / corporate networks | Your Python environment may not trust the system or corporate proxy CA. Try `pip install pip-system-certs`, then restart the terminal and retry. This is common with Conda/Miniforge behind HTTPS-inspecting firewalls. |
+| Relay registration fails: `Connection failed (direct + proxy)` / `Tunnel connection failed: 403` | Your shell's `HTTP(S)_PROXY` points to an IDE-internal proxy, or a corporate SWG blocks the relay domain. Restart the daemon using the proxy your browser actually uses — see below. |
+
+### Starting behind corporate proxies
+
+On managed corporate networks, daemon registration can fail
+(`~/.octo/daemon.log` shows `Connection failed (direct + proxy): Tunnel
+connection failed: 403`). Common causes:
+
+1. **`HTTP(S)_PROXY` points to an IDE-internal proxy**: some AI coding tools
+   (e.g. opencode) inject `HTTPS_PROXY=http://localhost:PORT` into their
+   terminals. Such ports only allow the tool's own APIs and return 403 for
+   any other CONNECT target.
+2. **A corporate secure web gateway (SWG) blocks the relay domain**: requests
+   get 302-redirected to a gateway warning page ("this site may pose security
+   risks"), so Python receives HTML instead of JSON.
+3. **Direct connection is firewalled**: without a proxy, requests simply time
+   out.
+
+Fix:
+
+1. **Find the proxy your browser actually uses** — if the browser can reach
+   the internet, that proxy works:
+   - Windows: the `ProxyServer` value under
+     `HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings`
+     (or Settings → Network → Proxy), e.g. `proxy.example.com:8080`.
+2. **Open the relay URL in the browser first** (the `redis_url` from
+   `~/.octo/config.json`). If an SWG risk-warning page appears, click
+   "Accept risk and continue" — the gateway then whitelists the domain for
+   your user, and subsequent requests from the same account via the proxy go
+   through unblocked.
+3. **Start the daemon with that proxy and authentication** (replace
+   `USER:PASS` with your real credentials; URL-encode special characters in
+   the password, e.g. `@` → `%40`):
+
+   ```powershell
+   # PowerShell
+   $env:HTTP_PROXY  = "http://USER:PASS@proxy.example.com:8080"
+   $env:HTTPS_PROXY = "http://USER:PASS@proxy.example.com:8080"
+   octo join --name NAME --daemon
+   ```
+
+   ```bash
+   # bash
+   HTTP_PROXY=http://USER:PASS@proxy.example.com:8080 \
+     HTTPS_PROXY=http://USER:PASS@proxy.example.com:8080 \
+     octo join --name NAME --daemon
+   ```
+
+4. **Verify**: `octo ls` should show the terminal as online.
+
+> Notes:
+> - The background daemon inherits the environment of the shell that started
+>   it. If the network changes and the relay becomes unreachable, kill the old
+>   daemon process and restart it with the correct proxy.
+> - When running from source, also set `PYTHONPATH` to the repo's `src/`
+>   directory.
+> - Never commit proxy URLs containing passwords to the repository or to any
+>   synced config file.
 
 ## License
 
